@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+saved_images/
+.env.local
+.DS_Store
+Thumbs.db
+drive_cache.json

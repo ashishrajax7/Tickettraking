@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: dispute-tracking
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SPREADSHEET_ID
+        value: 1e9OyvaLMVyRh84adrx-zxuWwz2ZmT-WddZB6VY3fw7Y
+      - key: APPS_SCRIPT_URL
+        value: https://script.google.com/macros/s/AKfycbyODSa81BXctwRYCt0qHawGoFiStv7EhPhNTFIo_SQ_Z7ANb-HLY7FO6t6D0cyh12u2/exec
+      - key: DRIVE_FOLDER_ID
+        value: 15c6PLPDtr9I3F8POfHUdwYv-ttdFtesA
+      - key: AJIO_CREDENTIALS_SHEET_URL
+        value: https://script.google.com/macros/s/AKfycbzO2hojy-wjdUYZXyUgF-COHQIHJ1EKffJQBxmOfDnMBbBk29H2zvPoBXq8IoYduG3aIQ/exec

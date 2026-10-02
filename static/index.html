@@ -1,0 +1,4247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dispute Tracking System</title>
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f5ff;
+      --card: rgba(255, 255, 255, 0.9);
+      --border: #d5e0f2;
+      --border-strong: #b9c9e4;
+      --text: #0f172a;
+      --text-muted: #334155;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --row-stripe: #f8fbff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+      font-weight: 500;
+      background: linear-gradient(135deg, #f3f7ff 0%, #e8effc 50%, #eef4ff 100%);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navbar - Clean Frosted Indigo/Sky Theme */
+    .navbar {
+      width: 100%;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.97) 0%, rgba(238, 244, 255, 0.96) 55%, rgba(224, 238, 255, 0.96) 100%);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      color: #1e3a8a;
+      padding: 10px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #c7d7f0;
+      box-shadow: 0 2px 12px rgba(37, 99, 235, 0.06);
+      flex-shrink: 0;
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .navbar-brand .logo-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid rgba(37, 99, 235, 0.22);
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 3px;
+      flex-shrink: 0;
+    }
+
+    .navbar-brand .logo-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .brand-title {
+      font-size: 1.14rem;
+      font-weight: 500;
+      letter-spacing: 0.1px;
+      background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 55%, #4f46e5 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 1px;
+    }
+
+    /* Full-Page Main Container */
+    .container {
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+      padding: 14px 18px 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    /* Clean, Modern Glass Upload Bar */
+    .upload-card {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(185, 207, 240, 0.9);
+      border-radius: 14px;
+      padding: 13px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      transition: all 0.2s ease;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 4px 14px rgba(37, 99, 235, 0.05);
+    }
+
+    .upload-card.dragover {
+      border-color: var(--primary);
+      background: rgba(239, 246, 255, 0.94);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .upload-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+    }
+
+    .upload-icon-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(79, 70, 229, 0.14) 100%);
+      border: 1px solid rgba(37, 99, 235, 0.26);
+      color: #2563eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .upload-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .upload-title-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .upload-title {
+      font-size: 0.96rem;
+      font-weight: 500;
+      color: #1e3a8a;
+    }
+
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.71rem;
+      font-weight: 500;
+      letter-spacing: 0.25px;
+      text-transform: uppercase;
+    }
+
+    .mode-pill.sheet-mode {
+      background: rgba(16, 185, 129, 0.14);
+      color: #047857;
+      border: 1px solid rgba(16, 185, 129, 0.34);
+    }
+
+    .mode-pill.excel-mode {
+      background: rgba(37, 99, 235, 0.13);
+      color: #1d4ed8;
+      border: 1px solid rgba(37, 99, 235, 0.32);
+    }
+
+    .upload-subtitle {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #475569;
+    }
+
+    .upload-buttons {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Clean Glass Transparent Buttons with Rich Colors */
+    .btn-glass {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 9px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: #1e3a8a;
+      background: rgba(255, 255, 255, 0.62);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.88),
+        0 2px 6px rgba(37, 99, 235, 0.05);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn-glass:hover {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(37, 99, 235, 0.48);
+      color: #1d4ed8;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 4px 12px rgba(37, 99, 235, 0.10);
+      transform: translateY(-1px);
+    }
+
+    .btn-glass:active {
+      transform: translateY(0);
+    }
+
+    .btn-glass-primary {
+      color: #1d4ed8;
+      background: rgba(37, 99, 235, 0.11);
+      border: 1px solid rgba(37, 99, 235, 0.34);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.78),
+        0 2px 8px rgba(37, 99, 235, 0.08);
+    }
+
+    .btn-glass-primary:hover {
+      background: rgba(37, 99, 235, 0.18);
+      border-color: rgba(37, 99, 235, 0.55);
+      color: #1e40af;
+    }
+
+    .btn-glass-success {
+      color: #047857;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.36);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.78),
+        0 2px 8px rgba(16, 185, 129, 0.08);
+    }
+
+    .btn-glass-success:hover {
+      background: rgba(16, 185, 129, 0.20);
+      border-color: rgba(16, 185, 129, 0.58);
+      color: #065f46;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Stats Summary Bar - Full Width with Colored Values */
+    .stats-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 1100px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .stat-card {
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.04);
+    }
+
+    .stat-label {
+      font-size: 0.73rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #475569;
+    }
+
+    .stat-value {
+      font-size: 1.38rem;
+      font-weight: 500;
+      color: #1e3a8a;
+      margin-top: 2px;
+    }
+
+    .stat-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid transparent;
+    }
+
+    /* Toolbar (Search, Filters, Sheet Tabs) */
+    .toolbar {
+      width: 100%;
+      display: flex;
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 10px 14px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 14px 8px 36px;
+      border: 1px solid rgba(148, 163, 184, 0.48);
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #0f172a;
+      outline: none;
+      transition: all 0.15s;
+    }
+
+    .search-box input:focus {
+      background: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .search-box .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #2563eb;
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.48);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(8px);
+      color: #1e3a8a;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Sheet Tabs - Glass Transparent Style */
+    .sheet-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .sheet-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #334155;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(148, 163, 184, 0.42);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .sheet-tab:hover {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(37, 99, 235, 0.45);
+      color: #1d4ed8;
+    }
+
+    .sheet-tab.active {
+      color: #1d4ed8;
+      background: rgba(37, 99, 235, 0.12);
+      border-color: rgba(37, 99, 235, 0.42);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 2px 6px rgba(37, 99, 235, 0.09);
+    }
+
+    /* Data Table Section - Light Soft Indigo Header with Rich Blue Text */
+    .table-wrapper {
+      position: relative;
+      width: 100%;
+      display: flex;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.05);
+      flex-direction: column;
+    }
+
+    .table-scroll {
+      position: relative;
+      width: 100%;
+      min-height: 340px;
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: calc(100vh - 270px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 100%;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e3a8a;
+      font-weight: 500;
+      text-align: left;
+      padding: 11px 13px;
+      white-space: nowrap;
+      border-right: 1px solid #bfdbfe;
+      border-bottom: 1.5px solid #93c5fd;
+      font-size: 0.81rem;
+      letter-spacing: 0.2px;
+    }
+
+    thead th.editable-header {
+      background: linear-gradient(180deg, #e0e7ff 0%, #c7d2fe 100%);
+      color: #312e81;
+    }
+
+    thead th.action-header {
+      background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e40af;
+      font-weight: 700;
+      text-align: center;
+      min-width: 105px;
+    }
+
+    .action-cell {
+      text-align: center;
+      min-width: 105px;
+      padding: 6px 8px !important;
+    }
+
+    .action-col-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 2px 2px;
+    }
+
+    /* Common Action Button Base */
+    .btn-action-base {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.16s ease-in-out;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      padding: 0;
+    }
+
+    .btn-action-base:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-action-base:active {
+      transform: scale(0.93);
+    }
+
+    .action-btn-svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: block;
+      pointer-events: none;
+      transition: transform 0.22s ease;
+    }
+
+    /* 1. Ticket Action Button (Purple / Violet) */
+    .btn-action-ticket {
+      background: #f5f3ff;
+      border: 1.5px solid #c4b5fd;
+      color: #7c3aed;
+    }
+
+    .btn-action-ticket:hover {
+      background: #ede9fe;
+      border-color: #7c3aed;
+      color: #6d28d9;
+      box-shadow: 0 3px 10px rgba(124, 58, 237, 0.28);
+    }
+
+    .btn-action-ticket:hover .action-ticket-svg {
+      transform: scale(1.12);
+    }
+
+    .btn-action-ticket.is-syncing {
+      background: #ede9fe !important;
+      border-color: #8b5cf6 !important;
+      color: #7c3aed !important;
+      pointer-events: none;
+    }
+
+    .btn-action-ticket.is-syncing .action-ticket-svg {
+      animation: pulseTicket 0.85s ease-in-out infinite alternate !important;
+    }
+
+    @keyframes pulseTicket {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      100% { transform: scale(1.18); opacity: 1; }
+    }
+
+    /* 2. Sync / Refresh Action Button (Emerald Green) */
+    .btn-action-sync {
+      background: #ecfdf5;
+      border: 1.5px solid #a7f3d0;
+      color: #059669;
+    }
+
+    .btn-action-sync:hover {
+      background: #d1fae5;
+      border-color: #10b981;
+      color: #047857;
+      box-shadow: 0 3px 10px rgba(16, 185, 129, 0.28);
+    }
+
+    .btn-action-sync:hover .action-sync-svg {
+      transform: rotate(60deg) scale(1.08);
+    }
+
+    .btn-action-sync.is-syncing {
+      background: #dcfce7 !important;
+      border-color: #22c55e !important;
+      color: #15803d !important;
+      pointer-events: none;
+    }
+
+    .btn-action-sync.is-syncing .action-sync-svg {
+      animation: spinSyncIcon 0.8s linear infinite !important;
+    }
+
+    @keyframes spinSyncIcon {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .sync-highlight {
+      animation: syncPulseHighlight 2.4s ease-out;
+    }
+
+    @keyframes syncPulseHighlight {
+      0% { background-color: #bbf7d0 !important; border-color: #16a34a !important; }
+      50% { background-color: #dcfce7 !important; }
+      100% { background-color: #ffffff; border-color: #cbd5e1; }
+    }
+
+    thead th.th-select-all {
+      width: 42px;
+      min-width: 42px;
+      max-width: 42px;
+      text-align: center;
+      padding: 8px 4px !important;
+      background: linear-gradient(180deg, #e0e7ff 0%, #dbeafe 100%);
+      border-right: 1px solid #cbd5e1;
+    }
+
+    tbody td.select-cell {
+      text-align: center;
+      width: 42px;
+      min-width: 42px;
+      max-width: 42px;
+      padding: 6px 4px;
+      background: #fafcff;
+      border-right: 1px solid #dbe4f0;
+    }
+
+    .row-select-checkbox,
+    .th-select-checkbox {
+      width: 17px;
+      height: 17px;
+      cursor: pointer;
+      accent-color: #2563eb;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+
+    tbody tr.row-selected {
+      background: rgba(37, 99, 235, 0.06) !important;
+    }
+
+    /* Batch Multi-Ticket Sync Controls */
+    .batch-sync-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 6px;
+    }
+
+    .btn-batch-sync {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 15px;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff;
+      border: 1px solid rgba(37, 99, 235, 0.5);
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-batch-sync:hover:not(:disabled) {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-batch-sync:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-batch-sync.is-batch-syncing {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      border-color: #059669;
+    }
+
+    .btn-batch-sync.is-batch-syncing svg {
+      animation: spinSyncIcon 0.8s linear infinite !important;
+    }
+
+    .btn-batch-select-all {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(241, 245, 249, 0.9);
+      color: #334155;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-batch-select-all:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .batch-progress-info {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 8px;
+      color: #047857;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .batch-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(5, 150, 105, 0.3);
+      border-top-color: #059669;
+      border-radius: 50%;
+      animation: spinSyncIcon 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    thead th:nth-child(2) {
+      width: 46px;
+      text-align: center;
+      background: linear-gradient(180deg, #e0e7ff 0%, #dbeafe 100%);
+      color: #1e3a8a;
+    }
+
+    /* Column Header & Filter Icon Styling */
+    .th-inner {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .th-label {
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .th-filter-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(147, 197, 253, 0.65);
+      border-radius: 4px;
+      cursor: pointer;
+      color: #2563eb;
+      transition: all 0.15s ease-in-out;
+      flex-shrink: 0;
+    }
+
+    .th-filter-btn:hover {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #1d4ed8;
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.35);
+    }
+
+    .th-filter-btn:hover svg {
+      stroke: #ffffff;
+    }
+
+    .th-filter-btn.is-active-filter {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #1d4ed8;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+    }
+
+    .th-filter-btn.is-active-filter svg {
+      fill: #ffffff;
+      stroke: #ffffff;
+    }
+
+    .filter-svg-icon {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+
+    /* Column Filter Floating Dropdown (Excel Style) */
+    .col-filter-dropdown {
+      position: fixed;
+      z-index: 999999;
+      width: 240px;
+      background: #ffffff;
+      border: 1.5px solid #c7d2fe;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.18), 0 4px 10px -2px rgba(0, 0, 0, 0.08);
+      padding: 10px;
+      font-family: inherit;
+      display: flex;
+      flex-direction: column;
+      animation: filterDropdownAnim 0.12s ease-out;
+    }
+
+    @keyframes filterDropdownAnim {
+      from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .col-filter-search-wrap {
+      margin-bottom: 8px;
+    }
+
+    .col-filter-search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 10px;
+      border: 1.5px solid #6366f1;
+      border-radius: 6px;
+      font-size: 0.81rem;
+      color: #1e293b;
+      outline: none;
+      background: #ffffff;
+      transition: all 0.15s;
+    }
+
+    .col-filter-search:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+    }
+
+    .col-filter-list {
+      max-height: 185px;
+      overflow-y: auto;
+      border: 1px solid #f1f5f9;
+      border-radius: 6px;
+      padding: 4px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      background: #fdfdfd;
+    }
+
+    .col-filter-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .col-filter-list::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 4px;
+    }
+
+    .col-filter-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.81rem;
+      color: #1e293b;
+      cursor: pointer;
+      padding: 3px 4px;
+      border-radius: 4px;
+      user-select: none;
+      transition: background 0.1s;
+    }
+
+    .col-filter-item:hover {
+      background: #f1f5f9;
+    }
+
+    .col-filter-item.is-select-all {
+      font-weight: 600;
+      color: #3730a3;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 5px;
+      margin-bottom: 2px;
+    }
+
+    .col-filter-item input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: #6366f1;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .col-filter-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .btn-filter-clear {
+      padding: 5px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-filter-clear:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .btn-filter-ok {
+      padding: 5px 15px;
+      border: 1px solid #4f46e5;
+      border-radius: 6px;
+      background: #6366f1;
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3);
+      transition: all 0.15s;
+    }
+
+    .btn-filter-ok:hover {
+      background: #4f46e5;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #e2e8f0;
+      transition: background 0.12s;
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--row-stripe);
+    }
+
+    tbody tr:hover {
+      background: #eff6ff;
+    }
+
+    tbody td {
+      padding: 8px 12px;
+      border-right: 1px solid #eef2f6;
+      color: #0f172a;
+      font-weight: 500;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    tbody td.row-index {
+      text-align: center;
+      font-weight: 500;
+      color: #2563eb;
+      background: #f8fbff;
+      border-right: 1px solid #dbe4f0;
+      font-size: 0.79rem;
+    }
+
+    .empty-cell {
+      color: #94a3b8;
+      font-size: 0.82rem;
+    }
+
+    /* Inline Glass Type Inputs (Ticket no, Dispute Reason, Remark) */
+    .cell-type-input {
+      width: 100%;
+      min-width: 145px;
+      padding: 6px 10px;
+      border-radius: 7px;
+      font-size: 0.83rem;
+      font-family: inherit;
+      font-weight: 500;
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      box-shadow: inset 0 1px 2px rgba(37, 99, 235, 0.04);
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .cell-type-input::placeholder {
+      color: #64748b;
+      font-size: 0.78rem;
+      font-weight: 400;
+    }
+
+    .cell-type-input:hover {
+      border-color: rgba(37, 99, 235, 0.5);
+      background: #ffffff;
+    }
+
+    .cell-type-input:focus {
+      background: #ffffff;
+      border-color: var(--primary);
+      color: #1e3a8a;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+    }
+
+    .cell-type-input.has-value {
+      background: rgba(239, 246, 255, 0.85);
+      border-color: rgba(37, 99, 235, 0.42);
+      color: #1e3a8a;
+      font-weight: 500;
+    }
+
+    .cell-type-input.edited-dirty {
+      background: rgba(236, 253, 245, 0.9);
+      border-color: rgba(16, 185, 129, 0.58);
+      color: #065f46;
+      font-weight: 500;
+    }
+
+    /* AWB Cell Styling - Rich Blue Glass Badge */
+    .awb-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: 'Consolas', 'SFMono-Regular', monospace;
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: #1d4ed8;
+      background: rgba(37, 99, 235, 0.09);
+      border: 1px solid rgba(37, 99, 235, 0.28);
+      backdrop-filter: blur(6px);
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .awb-badge:hover {
+      background: rgba(37, 99, 235, 0.16);
+      border-color: rgba(37, 99, 235, 0.48);
+      color: #1e40af;
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #2563eb;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1px;
+    }
+
+    /* Courier Partner Badges (Vibrant Colors, Non-Bold Medium Weight) */
+    .courier-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+
+    .courier-bluedart {
+      background: rgba(37, 99, 235, 0.12);
+      color: #1d4ed8;
+      border-color: rgba(37, 99, 235, 0.28);
+    }
+
+    .courier-shadowfax {
+      background: rgba(245, 158, 11, 0.14);
+      color: #b45309;
+      border-color: rgba(245, 158, 11, 0.32);
+    }
+
+    .courier-xpressbees {
+      background: rgba(219, 39, 119, 0.12);
+      color: #be185d;
+      border-color: rgba(219, 39, 119, 0.28);
+    }
+
+    .courier-ekart {
+      background: rgba(79, 70, 229, 0.12);
+      color: #4338ca;
+      border-color: rgba(79, 70, 229, 0.28);
+    }
+
+    .courier-delhivery {
+      background: rgba(220, 38, 38, 0.12);
+      color: #b91c1c;
+      border-color: rgba(220, 38, 38, 0.28);
+    }
+
+    .courier-default {
+      background: rgba(100, 116, 139, 0.12);
+      color: #1e293b;
+      border-color: rgba(100, 116, 139, 0.28);
+    }
+
+    /* Status Pill */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.79rem;
+      font-weight: 500;
+      background: rgba(238, 242, 255, 0.9);
+      border: 1px solid #c7d2fe;
+      color: #3730a3;
+    }
+
+    /* Multi-Color Loading Animation & Image Icon Cell Buttons */
+    .img-sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: #1e3a8a;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      backdrop-filter: blur(8px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    #saveBtnIcon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+    }
+
+    .multicolor-loader {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 0deg,
+        #4285f4 0deg 90deg,
+        #ea4335 90deg 180deg,
+        #fbbc05 180deg 270deg,
+        #34a853 270deg 360deg
+      );
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.2px), #000 calc(100% - 2.7px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 3.2px), #000 calc(100% - 2.7px));
+      animation: multiSpin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes multiSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .drive-img-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: #047857;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.36);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.75),
+        0 1px 4px rgba(16, 185, 129, 0.08);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+
+    .drive-img-btn:hover {
+      background: rgba(16, 185, 129, 0.20);
+      border-color: rgba(16, 185, 129, 0.6);
+      color: #065f46;
+      transform: translateY(-1px);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        0 3px 10px rgba(16, 185, 129, 0.16);
+    }
+
+    /* Table Footer & Centered Pagination Bar */
+    .table-footer {
+      position: relative;
+      min-height: 54px;
+      padding: 10px 18px;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.81rem;
+      font-weight: 500;
+      color: #334155;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    #showingCount {
+      position: absolute;
+      left: 18px;
+      color: #475569;
+      font-weight: 500;
+    }
+
+    @media (max-width: 900px) {
+      #showingCount {
+        position: static;
+      }
+    }
+
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 0 auto;
+    }
+
+    .page-nav-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 9px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      transition: all 0.16s ease;
+    }
+
+    .page-nav-btn:hover:not(:disabled) {
+      background: #f8fbff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+
+    .page-nav-btn:disabled {
+      color: #94a3b8;
+      background: #fcfdff;
+      border-color: #edf2f7;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .page-indicator {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #1e293b;
+      padding: 0 4px;
+      user-select: none;
+    }
+
+    .page-curr {
+      color: #4f46e5;
+      font-weight: 500;
+    }
+
+    .page-total {
+      color: #0f172a;
+      font-weight: 500;
+    }
+
+    .page-goto-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 16px;
+    }
+
+    .page-goto-label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #334155;
+    }
+
+    .page-goto-input {
+      width: 58px;
+      height: 32px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .page-goto-input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+
+    .page-goto-btn {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 6px;
+      border: 1px solid #4338ca;
+      background: #4f46e5;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .page-goto-btn:hover {
+      background: #4338ca;
+    }
+
+    /* Table-Centered Large Multi-Color Loader (Keeps All Headings & Top UI 100% Clear) */
+    .center-page-loader {
+      position: absolute;
+      top: 42px;
+      left: 0;
+      right: 0;
+      bottom: 54px;
+      background: rgba(255, 255, 255, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .center-page-loader.active {
+      display: flex;
+    }
+
+    .center-loader-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px 34px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(147, 197, 253, 0.7);
+      box-shadow:
+        0 12px 32px rgba(37, 99, 235, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+
+    .multicolor-loader-xl {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 0deg,
+        #4285f4 0deg 90deg,
+        #ea4335 90deg 180deg,
+        #fbbc05 180deg 270deg,
+        #34a853 270deg 360deg
+      );
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5.5px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5.5px));
+      animation: multiSpin 0.85s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .center-loader-text {
+      font-size: 0.94rem;
+      font-weight: 500;
+      color: #1e3a8a;
+      letter-spacing: -0.1px;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(37, 99, 235, 0.32);
+      color: #1e3a8a;
+      padding: 11px 18px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.14);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: all 0.22s ease;
+      z-index: 3000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    svg.icon {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    svg.icon-lg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Cell Status Highlight Badges / Inputs */
+    input.cell-type-input.status-locked {
+      background: #fef2f2 !important;
+      border: 1.5px solid #f87171 !important;
+      color: #991b1b !important;
+      font-weight: 600 !important;
+    }
+    input.cell-type-input.status-warn {
+      background: #fffbeb !important;
+      border: 1.5px solid #fde047 !important;
+      color: #92400e !important;
+      font-weight: 600 !important;
+    }
+    input.cell-type-input.status-error {
+      background: #fee2e2 !important;
+      border: 1.5px solid #ef4444 !important;
+      color: #7f1d1d !important;
+      font-weight: 600 !important;
+    }
+    input.cell-type-input.status-success {
+      background: #ecfdf5 !important;
+      border: 1.5px solid #6ee7b7 !important;
+      color: #047857 !important;
+      font-weight: 600 !important;
+    }
+    input.cell-type-input.sync-highlight {
+      animation: cellPulse 1.2s ease;
+    }
+    @keyframes cellPulse {
+      0% { transform: scale(1.03); box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+      100% { transform: scale(1); box-shadow: none; }
+    }
+
+    /* System Error & Notice Modal Dialog */
+    .system-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.68);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .system-modal-card {
+      position: relative;
+      width: 100%;
+      max-width: 540px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+      animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalSlideUp {
+      from { transform: translateY(18px) scale(0.97); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .system-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 22px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .system-modal-header.header-danger {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-bottom: 1px solid #fecaca;
+    }
+
+    .system-modal-header.header-warning {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border-bottom: 1px solid #fde68a;
+    }
+
+    .system-modal-header.header-info {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-bottom: 1px solid #bfdbfe;
+    }
+
+    .system-modal-icon-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.45rem;
+      flex-shrink: 0;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .system-modal-title-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .system-modal-title {
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .header-danger .system-modal-title {
+      color: #991b1b;
+    }
+
+    .header-warning .system-modal-title {
+      color: #92400e;
+    }
+
+    .system-modal-subtitle {
+      font-size: 0.81rem;
+      color: #64748b;
+      margin: 3px 0 0 0;
+      font-weight: 500;
+    }
+
+    .system-modal-close {
+      background: transparent;
+      border: none;
+      font-size: 1.6rem;
+      color: #64748b;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .system-modal-close:hover {
+      color: #0f172a;
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .system-modal-body {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: #ffffff;
+    }
+
+    .system-modal-alert-box {
+      padding: 13px 16px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #ef4444;
+    }
+
+    .system-modal-alert-box.alert-warn {
+      border-left-color: #f59e0b;
+      background: #fffdf5;
+      border-color: #fef3c7;
+    }
+
+    .system-modal-alert-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+
+    .system-modal-alert-msg {
+      font-size: 0.92rem;
+      color: #1e293b;
+      font-weight: 600;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .system-modal-guide-box {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+    }
+
+    .guide-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .guide-steps {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 0.84rem;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    .guide-steps li {
+      margin-bottom: 4px;
+    }
+
+    .system-modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 22px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .btn-modal-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #ffffff;
+      background: #2563eb;
+      border: 1px solid #1d4ed8;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    }
+
+    .btn-modal-action:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .btn-modal-close {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: #334155;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-modal-close:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="navbar">
+    <div class="navbar-brand">
+      <div class="logo-box">
+        <img src="/icon.png" alt="Brandcentral Logo" />
+      </div>
+      <div>
+        <div class="brand-title">Dispute Tracking System</div>
+        <div class="brand-subtitle">Dispute Operations &amp; Month-Wise Sheet Sync</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Full-Page Main Workspace -->
+  <main class="container">
+
+    <!-- Clean Glass Upload & Sync Bar -->
+    <div id="uploadCard" class="upload-card">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+      <div class="upload-left" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon-wrap">
+          <svg class="icon icon-lg" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="upload-info">
+          <div class="upload-title-row">
+            <span class="upload-title" id="uploadTitle">Saved Google Sheet Data</span>
+            <span id="modePill" class="mode-pill sheet-mode">Sheet View</span>
+          </div>
+          <div class="upload-subtitle" id="uploadSubtitle">
+            Drag &amp; drop an Excel file (.xlsx) here or click "Choose Excel File" to upload
+          </div>
+        </div>
+      </div>
+
+      <div class="upload-buttons">
+        <button type="button" class="btn-glass btn-glass-primary" onclick="document.getElementById('fileInput').click()">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Choose Excel File</span>
+        </button>
+
+        <button type="button" id="btnRefreshSheet" class="btn-glass" onclick="loadGoogleSheetData(event)" title="Reload latest dispute rows directly from Google Sheet">
+          <svg class="icon" viewBox="0 0 24 24">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          <span>Refresh Sheet</span>
+        </button>
+
+        <button type="button" id="btnSyncVendors" class="btn-glass" onclick="syncVendorsFromGoogleSheet(event)" title="Sync latest party passwords from Google Sheet">
+          <svg class="icon" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span id="syncVendorsText">Logins (110)</span>
+        </button>
+
+        <button type="button" id="btnViewSavedSheet" class="btn-glass" onclick="loadGoogleSheetData(event)" style="display:none;">
+          <svg class="icon" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="21" x2="9" y2="9"/>
+          </svg>
+          <span>View Saved Sheet</span>
+        </button>
+
+        <button type="button" id="btnSaveToSheet" class="btn-glass btn-glass-success" onclick="saveCurrentDataToGoogleSheet(event)">
+          <span id="saveBtnIcon">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+          </span>
+          <span id="saveBtnText">Save to Database</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div id="statsGrid" class="stats-grid">
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Total Rows</div>
+          <div class="stat-value" id="statTotalRows" style="color:#2563eb;">0</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(37,99,235,0.09); border-color:rgba(37,99,235,0.22); color:#2563eb;">
+          <svg class="icon icon-lg" viewBox="0 0 24 24">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Total Columns</div>
+          <div class="stat-value" id="statTotalCols" style="color:#4f46e5;">0</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(79,70,229,0.09); border-color:rgba(79,70,229,0.22); color:#4f46e5;">
+          <svg class="icon icon-lg" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="21" x2="9" y2="9"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">AWB Numbers</div>
+          <div class="stat-value" id="statAwbCount" style="color:#059669;">0</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(5,150,105,0.09); border-color:rgba(5,150,105,0.22); color:#059669;">
+          <svg class="icon icon-lg" viewBox="0 0 24 24">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Courier Partners</div>
+          <div class="stat-value" id="statCourierCount" style="color:#d97706;">0</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(217,119,6,0.09); border-color:rgba(217,119,6,0.22); color:#d97706;">
+          <svg class="icon icon-lg" viewBox="0 0 24 24">
+            <rect x="1" y="3" width="15" height="13"/>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/>
+            <circle cx="18.5" cy="18.5" r="2.5"/>
+          </svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Drive PNG Synced</div>
+          <div class="stat-value" id="statSyncedCount" style="color:#047857;">0 / 0</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(16,185,129,0.09); border-color:rgba(16,185,129,0.22); color:#059669;">
+          <svg class="icon icon-lg" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search & Filter Toolbar -->
+    <div id="toolbar" class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <span class="search-icon">
+            <svg class="icon" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search AWB No., Ticket No, Dispute Reason, Remark, SKU..."
+            oninput="applyFilters(true)"
+          />
+        </div>
+        <select id="courierFilter" class="filter-select" onchange="applyFilters(true)">
+          <option value="">All Courier Partners</option>
+        </select>
+
+        <!-- Batch Multi-Ticket Sync Controls -->
+        <div class="batch-sync-controls" id="batchSyncControls">
+          <button
+            type="button"
+            id="btnBatchSyncSelected"
+            class="btn-batch-sync"
+            onclick="handleBatchSyncClick()"
+            title="Sync all selected tickets in one continuous Ajio Help Center session without repeated logins"
+            disabled
+          >
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+            <span>⚡ Sync Selected (<span id="selectedTicketsCount">0</span>)</span>
+          </button>
+          <button
+            type="button"
+            id="btnSelectAllTickets"
+            class="btn-batch-select-all"
+            onclick="toggleSelectAllRows()"
+            title="Select all tickets on current page"
+          >
+            Select All
+          </button>
+          <div id="batchProgressInfo" class="batch-progress-info" style="display:none;">
+            <span class="batch-spinner"></span>
+            <span id="batchProgressText">Syncing 0/0...</span>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div id="sheetTabs" class="sheet-tabs"></div>
+      </div>
+    </div>
+
+    <!-- Full Table -->
+    <div id="tableWrapper" class="table-wrapper">
+      <div class="table-scroll">
+        <table id="excelTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Table-Centered Large Multi-Color Loader (Leaves Navbar, Upload Bar & Table Headings 100% Clear) -->
+      <div id="centerPageLoader" class="center-page-loader active">
+        <div class="center-loader-card">
+          <div class="multicolor-loader-xl"></div>
+          <div id="centerLoaderText" class="center-loader-text">Loading Database...</div>
+        </div>
+      </div>
+
+      <div class="table-footer">
+        <div id="showingCount">Showing 0 rows</div>
+
+        <div class="pagination-bar" id="paginationBar">
+          <button type="button" id="prevPageBtn" class="page-nav-btn" onclick="changePage(-1)">
+            <svg class="icon" style="width:15px;height:15px;" viewBox="0 0 24 24">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            <span>Previous</span>
+          </button>
+
+          <span class="page-indicator">
+            Page <span id="currPageNum" class="page-curr">1</span> of <span id="totalPagesNum" class="page-total">1</span>
+          </span>
+
+          <button type="button" id="nextPageBtn" class="page-nav-btn" onclick="changePage(1)">
+            <span>Next</span>
+            <svg class="icon" style="width:15px;height:15px;" viewBox="0 0 24 24">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+
+          <div class="page-goto-group">
+            <span class="page-goto-label">Go to page:</span>
+            <input
+              type="number"
+              id="gotoPageInput"
+              class="page-goto-input"
+              min="1"
+              value="1"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();goToPageFromInput();}"
+            />
+            <button type="button" class="page-goto-btn" onclick="goToPageFromInput()">Go</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Floating Column Filter Dropdown (Excel Style) -->
+  <div id="colFilterDropdown" class="col-filter-dropdown" style="display: none;">
+    <div class="col-filter-search-wrap">
+      <input type="text" id="colFilterSearchInput" class="col-filter-search" placeholder="Search values..." />
+    </div>
+    <div class="col-filter-list" id="colFilterList"></div>
+    <div class="col-filter-actions">
+      <button type="button" class="btn-filter-clear" id="btnColFilterClear">Clear</button>
+      <button type="button" class="btn-filter-ok" id="btnColFilterOk">OK</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Master System Error & Notice Modal -->
+  <div id="systemAlertModal" class="system-modal-overlay" style="display: none;" onclick="if(event.target===this)closeSystemModal()">
+    <div class="system-modal-card">
+      <div class="system-modal-header" id="systemModalHeader">
+        <div class="system-modal-icon-badge">
+          <span id="systemModalIcon">⚠️</span>
+        </div>
+        <div class="system-modal-title-wrap">
+          <h3 class="system-modal-title" id="systemModalTitle">Portal Notice</h3>
+          <p class="system-modal-subtitle" id="systemModalSubtitle">Row Details</p>
+        </div>
+        <button type="button" class="system-modal-close" onclick="closeSystemModal()">&times;</button>
+      </div>
+
+      <div class="system-modal-body">
+        <div class="system-modal-alert-box" id="systemModalAlertBox">
+          <div class="system-modal-alert-label" id="systemModalAlertLabel">Portal Message:</div>
+          <div class="system-modal-alert-msg" id="systemModalAlertMsg">Error details</div>
+        </div>
+
+        <div class="system-modal-guide-box" id="systemModalGuideBox">
+          <div class="guide-title" id="systemModalGuideTitle">Recommended Action:</div>
+          <ul class="guide-steps" id="systemModalGuideSteps"></ul>
+        </div>
+      </div>
+
+      <div class="system-modal-footer">
+        <a id="systemModalActionBtn" href="https://seller.ajio.com" target="_blank" class="btn-modal-action" style="display:none;">
+          Open Portal
+        </a>
+        <button type="button" class="btn-modal-close" onclick="closeSystemModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PAGE_SIZE = 50;
+    let workbookState = null;
+    let currentSheetName = null;
+    let currentHeaders = [
+      'Channel', 'Seller Name', 'Return Date', 'Return Id', 'MP Date', 'Days Left',
+      'Invoice No.', 'Order id', 'Item SKU', 'Amt', 'AWB No.',
+      'Courier Partner', 'Platform Status', 'Status', 'Last Location',
+      'Timestamp', 'Last Sync', 'Image', 'Ticket no', 'Dispute Reason', 'Ticket Status', 'Remark', 'Action'
+    ];
+    let currentRows = [];
+    let filteredRows = [];
+    let currentPage = 1;
+    let appsScriptUrl = '';
+    let currentMode = 'google_sheet';
+
+    let columnFilters = {}; // colIdx -> Set of allowed values
+    let batchStartTime = 0;
+    const SVG_FILTER_ICON = `<svg class="filter-svg-icon" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`;
+
+    let selectedRowNums = new Set();
+    let isBatchSyncRunning = false;
+    let debouncedSaveTimer = null;
+
+    function triggerDebouncedGoogleSheetSave(delay = 1800) {
+      // Auto-save DISABLED — user saves manually via Save button
+    }
+
+    let rowImageSyncState = {};
+    let currentSyncRunId = 0;
+
+    function showCenterLoader(message = 'Loading...') {
+      const overlay = document.getElementById('centerPageLoader');
+      const label = document.getElementById('centerLoaderText');
+      if (label) label.textContent = message;
+      if (overlay) overlay.classList.add('active');
+    }
+
+    function hideCenterLoader() {
+      const overlay = document.getElementById('centerPageLoader');
+      if (overlay) overlay.classList.remove('active');
+    }
+
+    const SVG_COPY = `<svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+    const SVG_IMAGE = `<svg class="icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+    const SVG_SHEET = `<svg class="icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`;
+    const SVG_SAVE = `<svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+
+    const uploadCard = document.getElementById('uploadCard');
+    const fileInput = document.getElementById('fileInput');
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      uploadCard.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadCard.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(evt => {
+      uploadCard.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadCard.classList.remove('dragover');
+      });
+    });
+
+    uploadCard.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleFileUpload(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFileUpload(e.target.files[0]);
+        fileInput.value = '';
+      }
+    });
+
+    function showToast(msg, duration = 3200) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    async function loadGoogleSheetData(e) {
+      if (e) e.stopPropagation();
+      const t0 = performance.now();
+      console.group('%c📊 [GOOGLE SHEET] Fetching Latest Dispute Records...', 'color: #059669; font-weight: bold; font-size: 12px;');
+      console.log('Endpoint: GET /api/sheet-data | Timestamp:', new Date().toLocaleTimeString());
+      showCenterLoader('Loading Database...');
+      try {
+        const res = await fetch('/api/sheet-data');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.config) {
+            appsScriptUrl = (data.config.apps_script_url || '').trim();
+          }
+          currentMode = 'google_sheet';
+          renderWorkbook(data);
+          const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+          const activeRows = (data.sheets && data.sheets[data.active_sheet]) ? data.sheets[data.active_sheet].rows.length : 0;
+          console.log(`%c📥 [GOOGLE SHEET DATA RECEIVED] (Took ${elapsed}s)`, 'color: #16a34a; font-weight: bold;', {
+            sheets: data.sheet_names,
+            activeSheet: data.active_sheet,
+            activeSheetRows: activeRows,
+            timeTaken: `${elapsed}s`,
+            sampleRow: activeRows > 0 ? data.sheets[data.active_sheet].rows[0] : null
+          });
+          console.groupEnd();
+          showToast(`✅ Loaded ${activeRows} records from Google Sheet (${elapsed}s)`, 3000);
+        }
+      } catch (err) {
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+        console.error(`%c❌ [GOOGLE SHEET ERROR] (Took ${elapsed}s)`, 'color: #dc2626; font-weight: bold;', err);
+        console.groupEnd();
+        showToast('⚠️ Could not load Google Sheet data: ' + err.message, 4000);
+      } finally {
+        hideCenterLoader();
+      }
+    }
+
+    async function syncVendorsFromGoogleSheet(e) {
+      if (e) e.stopPropagation();
+      const t0 = performance.now();
+      console.group('%c🔑 [GOOGLE SHEET LOGINS] Syncing Vendor Passwords...', 'color: #d97706; font-weight: bold; font-size: 12px;');
+      console.log('Endpoint: GET /api/sync-vendors | Timestamp:', new Date().toLocaleTimeString());
+      const btnText = document.getElementById('syncVendorsText');
+      const orig = btnText ? btnText.textContent : 'Logins';
+      if (btnText) btnText.textContent = 'Syncing...';
+      try {
+        const res = await fetch('/api/sync-vendors');
+        const data = await res.json();
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+        if (data.ok) {
+          console.log(`%c📥 [LOGINS RECEIVED] (Took ${elapsed}s)`, 'color: #16a34a; font-weight: bold;', {
+            partiesCount: data.count,
+            availableParties: data.parties,
+            timeTaken: `${elapsed}s`,
+            message: data.message
+          });
+          console.groupEnd();
+          showToast(`🔑 ${data.message || 'Synced party logins!'} (${elapsed}s)`, 4500);
+          if (btnText) btnText.textContent = `Logins (${data.count})`;
+        } else {
+          console.warn(`%c⚠️ [LOGINS SYNC FAILED] (Took ${elapsed}s)`, 'color: #d97706; font-weight: bold;', data);
+          console.groupEnd();
+          showToast(`⚠️ Sync failed: ${data.error}`, 4000);
+          if (btnText) btnText.textContent = orig;
+        }
+      } catch (err) {
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+        console.error(`%c❌ [LOGINS ERROR] (Took ${elapsed}s)`, 'color: #dc2626; font-weight: bold;', err);
+        console.groupEnd();
+        showToast(`⚠️ Error syncing logins: ${err.message}`, 4000);
+        if (btnText) btnText.textContent = orig;
+      }
+    }
+
+    async function handleFileUpload(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      showCenterLoader('Loading Excel Data...');
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.config) {
+            appsScriptUrl = (data.config.apps_script_url || '').trim();
+          }
+          currentMode = 'excel_upload';
+          renderWorkbook(data);
+          showToast(`Loaded "${file.name}"`);
+          return;
+        }
+      } catch (err) {
+        showToast('Failed to upload Excel file');
+      } finally {
+        hideCenterLoader();
+      }
+    }
+
+    function renderWorkbook(data) {
+      workbookState = data;
+      currentSheetName = data.active_sheet || (data.sheet_names && data.sheet_names[0]);
+
+      const modePill = document.getElementById('modePill');
+      const btnViewSaved = document.getElementById('btnViewSavedSheet');
+
+      if (currentMode === 'excel_upload') {
+        document.getElementById('uploadTitle').textContent = data.filename;
+        document.getElementById('uploadSubtitle').textContent =
+          'Edit Ticket no, Dispute Reason, or Remark below and click "Save to Database"';
+        modePill.textContent = 'Uploaded Excel';
+        modePill.className = 'mode-pill excel-mode';
+        btnViewSaved.style.display = 'inline-flex';
+      } else {
+        document.getElementById('uploadTitle').textContent = 'Saved Google Sheet Data';
+        document.getElementById('uploadSubtitle').textContent =
+          'Drag & drop an Excel file (.xlsx) here or click "Choose Excel File" to upload';
+        modePill.textContent = 'Sheet View';
+        modePill.className = 'mode-pill sheet-mode';
+        btnViewSaved.style.display = 'none';
+      }
+
+      const sheetTabs = document.getElementById('sheetTabs');
+      sheetTabs.innerHTML = '';
+      (data.sheet_names || []).forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'sheet-tab' + (name === currentSheetName ? ' active' : '');
+        btn.dataset.sheet = name;
+        btn.innerHTML = `${SVG_SHEET}<span>${escapeHtml(name)}</span>`;
+        btn.onclick = () => selectSheet(name);
+        sheetTabs.appendChild(btn);
+      });
+
+      selectSheet(currentSheetName);
+    }
+
+    function selectSheet(sheetName) {
+      currentSheetName = sheetName;
+      const sheet = (workbookState.sheets && workbookState.sheets[sheetName]) || { headers: [], rows: [] };
+      currentHeaders = sheet.headers ? sheet.headers.slice() : [];
+      if (currentHeaders.length > 0 && !currentHeaders.some(h => String(h).trim().toLowerCase() === 'action')) {
+        const remIdx = currentHeaders.findIndex(h => String(h).trim().toLowerCase().includes('remark'));
+        if (remIdx !== -1) {
+          currentHeaders.splice(remIdx + 1, 0, 'Action');
+        } else {
+          currentHeaders.push('Action');
+        }
+      }
+      currentRows = sheet.rows || [];
+      currentRows.forEach((r, idx) => {
+        r._row_num = idx + 1;
+      });
+      currentPage = 1;
+      rowImageSyncState = {};
+      columnFilters = {};
+      closeColumnFilterDropdown();
+
+      document.querySelectorAll('.sheet-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sheet === sheetName);
+      });
+
+      document.getElementById('statsGrid').style.display = 'grid';
+      document.getElementById('toolbar').style.display = 'flex';
+      document.getElementById('tableWrapper').style.display = 'flex';
+
+      const imageIdx = findImageColumnIndex();
+      currentRows.forEach(row => {
+        const rowNum = row._row_num;
+        const imgLink = getRowImageLink(row, imageIdx);
+
+        if (row.cached_drive && row.cached_drive.viewUrl && (row.cached_drive.drive_synced || !appsScriptUrl)) {
+          rowImageSyncState[rowNum] = {
+            status: 'synced',
+            viewUrl: row.cached_drive.viewUrl,
+            channel: row.cached_drive.channel || row.channel || 'General',
+            awb: row.awb,
+            courier: row.courier || row.cached_drive.courier || '',
+            fileName: row.cached_drive.fileName || row.image_filename || `${row.awb}.png`
+          };
+        } else if (imgLink) {
+          if (currentMode === 'google_sheet' && imgLink.includes('drive.google.com')) {
+            rowImageSyncState[rowNum] = {
+              status: 'synced',
+              viewUrl: imgLink,
+              channel: row.channel || 'General',
+              awb: row.awb,
+              courier: row.courier || '',
+              fileName: row.image_filename || `${row.awb}.png`
+            };
+          } else {
+            rowImageSyncState[rowNum] = {
+              status: 'loading',
+              imageUrl: imgLink,
+              channel: row.channel || 'General',
+              awb: row.awb,
+              courier: row.courier || '',
+              fileName: row.image_filename || `${row.awb}.png`
+            };
+          }
+        }
+      });
+
+      selectedRowNums.clear();
+      updateSelectedCountUI();
+
+      updateStatsAndFilters();
+      renderTableHeaders();
+      applyFilters(true);
+
+      startImageSyncQueue(false);
+    }
+
+    function findHeaderIndex(keywords) {
+      return currentHeaders.findIndex(h => {
+        const lower = String(h || '').toLowerCase().trim();
+        return keywords.some(k => lower.includes(k));
+      });
+    }
+
+    function findImageColumnIndex() {
+      return findHeaderIndex(['image', 'photo', 'pod', 'media']);
+    }
+
+    function getTicketStatusColumnIndex() {
+      // 1. Direct exact matches for 'ticket status' or 'ticket_status'
+      let idx = currentHeaders.findIndex(h => {
+        const l = String(h || '').toLowerCase().trim();
+        return l === 'ticket status' || l === 'ticket_status';
+      });
+      if (idx !== -1) return idx;
+
+      // 2. Both 'ticket' and 'status' in header name
+      idx = currentHeaders.findIndex(h => {
+        const l = String(h || '').toLowerCase().trim();
+        return l.includes('ticket') && l.includes('status');
+      });
+      if (idx !== -1) return idx;
+
+      // 3. Fallback: contains 'status' but is NOT 'platform status'
+      idx = currentHeaders.findIndex(h => {
+        const l = String(h || '').toLowerCase().trim();
+        return (l === 'status' || l.includes('status')) && !l.includes('platform');
+      });
+      return idx;
+    }
+
+    function isEditableColumn(colIdx) {
+      const h = String(currentHeaders[colIdx] || '').toLowerCase().trim();
+      const ticketStatusIdx = getTicketStatusColumnIndex();
+      return (
+        colIdx === ticketStatusIdx ||
+        h.includes('ticket') ||
+        h.includes('dispute') ||
+        h.includes('reason') ||
+        h.includes('remark')
+      );
+    }
+
+    function getEditablePlaceholder(colIdx) {
+      const h = String(currentHeaders[colIdx] || '').toLowerCase().trim();
+      const ticketStatusIdx = getTicketStatusColumnIndex();
+      if (colIdx === ticketStatusIdx) return 'Ticket Status...';
+      if (h.includes('ticket')) return 'Type Ticket No...';
+      if (h.includes('dispute') || h.includes('reason')) return 'Type Dispute Reason...';
+      if (h.includes('remark')) return 'Type Remark...';
+      return 'Type here...';
+    }
+
+    function getRowImageLink(row, imageIdx) {
+      if (!row) return null;
+      if (imageIdx !== -1 && row.links && row.links[String(imageIdx)]) {
+        return row.links[String(imageIdx)];
+      }
+      if (imageIdx !== -1 && row.values[imageIdx]) {
+        const val = String(row.values[imageIdx]).trim();
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+          return val;
+        }
+      }
+      if (row.links) {
+        const keys = Object.keys(row.links);
+        if (keys.length > 0) return row.links[keys[0]];
+      }
+      return null;
+    }
+
+    function updateStatsAndFilters() {
+      const awbIdx = findHeaderIndex(['awb']);
+      const courierIdx = findHeaderIndex(['courier']);
+
+      let awbCount = 0;
+      const couriers = new Set();
+
+      currentRows.forEach(r => {
+        if (awbIdx !== -1 && r.values[awbIdx]) {
+          awbCount++;
+        }
+        if (courierIdx !== -1 && r.values[courierIdx]) {
+          couriers.add(r.values[courierIdx]);
+        }
+      });
+
+      document.getElementById('statTotalRows').textContent = currentRows.length;
+      document.getElementById('statTotalCols').textContent = currentHeaders.length;
+      document.getElementById('statAwbCount').textContent = awbCount;
+      document.getElementById('statCourierCount').textContent = couriers.size;
+      updateSyncedCounter();
+
+      const courierFilter = document.getElementById('courierFilter');
+      const prevVal = courierFilter.value;
+      courierFilter.innerHTML = '<option value="">All Courier Partners</option>';
+      Array.from(couriers).sort().forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        courierFilter.appendChild(opt);
+      });
+      courierFilter.value = prevVal;
+    }
+
+    function updateSyncedCounter() {
+      const states = Object.values(rowImageSyncState);
+      const totalWithImg = states.length;
+      const synced = states.filter(s => s.status === 'synced').length;
+      document.getElementById('statSyncedCount').textContent = `${synced} / ${totalWithImg}`;
+    }
+
+    async function startImageSyncQueue(forceDrive) {
+      const runId = ++currentSyncRunId;
+      const imageIdx = findImageColumnIndex();
+
+      const rowsToProcess = currentRows.filter(row => {
+        const rNum = row._row_num;
+        const imgLink = getRowImageLink(row, imageIdx);
+        const st = rowImageSyncState[rNum];
+        if (forceDrive && imgLink) {
+          rowImageSyncState[rNum] = {
+            status: 'loading',
+            imageUrl: imgLink,
+            channel: row.channel || 'General',
+            awb: row.awb,
+            courier: row.courier || '',
+            fileName: row.image_filename || `${row.awb}.png`
+          };
+          updateImageCellDom(rNum);
+          return true;
+        }
+        return st && st.status === 'loading';
+      });
+
+      updateSyncedCounter();
+
+      for (const row of rowsToProcess) {
+        if (runId !== currentSyncRunId) return;
+        const rNum = row._row_num;
+        const st = rowImageSyncState[rNum];
+        if (!st) continue;
+
+        try {
+          const res = await fetch('/api/sync-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              awb: st.awb || `ROW_${rNum}`,
+              courier: st.courier || '',
+              channel: st.channel || 'General',
+              image_url: st.imageUrl,
+              force_drive: !!forceDrive
+            })
+          });
+          const result = await res.json();
+          if (runId !== currentSyncRunId) return;
+
+          if (result.ok && result.data) {
+            const finalUrl = result.data.viewUrl || result.data.localUrl || st.imageUrl;
+            rowImageSyncState[rNum] = {
+              status: 'synced',
+              viewUrl: finalUrl,
+              channel: result.data.channel || st.channel,
+              awb: st.awb,
+              courier: st.courier,
+              fileName: result.data.fileName || st.fileName,
+              driveSynced: result.data.drive_synced
+            };
+            if (imageIdx !== -1) {
+              if (!row.links) row.links = {};
+              row.links[String(imageIdx)] = finalUrl;
+            }
+          } else {
+            rowImageSyncState[rNum] = {
+              status: 'synced',
+              viewUrl: result.localUrl || st.imageUrl,
+              channel: st.channel,
+              awb: st.awb,
+              courier: st.courier,
+              fileName: st.fileName,
+              driveSynced: false
+            };
+          }
+        } catch (err) {
+          rowImageSyncState[rNum] = {
+            status: 'synced',
+            viewUrl: st.imageUrl,
+            channel: st.channel,
+            awb: st.awb,
+            courier: st.courier,
+            fileName: st.fileName,
+            driveSynced: false
+          };
+        }
+
+        updateImageCellDom(rNum);
+        updateSyncedCounter();
+      }
+    }
+
+    let isSavingToSheet = false;
+
+    async function saveCurrentDataToGoogleSheet(e) {
+      if (e) e.stopPropagation();
+      if (isSavingToSheet) {
+        console.log("Already saving to sheet, skipping redundant call...");
+        return;
+      }
+      if (!currentRows || currentRows.length === 0) {
+        showToast('No rows available to save');
+        return;
+      }
+
+      isSavingToSheet = true;
+      const btn = document.getElementById('btnSaveToSheet');
+      const iconSpan = document.getElementById('saveBtnIcon');
+      const textSpan = document.getElementById('saveBtnText');
+      const imageIdx = findImageColumnIndex();
+
+      if (btn) btn.disabled = true;
+      if (iconSpan) iconSpan.innerHTML = `<span class="multicolor-loader"></span>`;
+      if (textSpan) textSpan.textContent = 'Saving...';
+
+      const payloadRows = currentRows.map(r => {
+        const st = rowImageSyncState[r._row_num];
+        const imgUrl = (st && st.viewUrl) || getRowImageLink(r, imageIdx) || '';
+        return {
+          values: r.values,
+          links: r.links || {},
+          image_url: imgUrl
+        };
+      });
+
+      try {
+        const res = await fetch('/api/save-sheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sheet_name: currentSheetName,
+            headers: currentHeaders,
+            rows: payloadRows
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          document.querySelectorAll('.cell-type-input.edited-dirty').forEach(el => {
+            el.classList.remove('edited-dirty');
+            if (el.value.trim() !== '') el.classList.add('has-value');
+          });
+          const sheetsLabel = (data.sheets || []).join(', ');
+          if (data.remote_synced) {
+            showToast(
+              `Saved to Database [${sheetsLabel}] (${data.inserted} new, ${data.updated} updated)`,
+              4500
+            );
+          } else {
+            const errMsg = data.remote_message || 'Google Sheets permission required in Apps Script';
+            showToast(`Apps Script Error: ${errMsg}`, 7000);
+          }
+        } else {
+          showToast('Error saving: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        showToast('Failed to save data to Database');
+      } finally {
+        isSavingToSheet = false;
+        if (btn) btn.disabled = false;
+        if (iconSpan) iconSpan.innerHTML = SVG_SAVE;
+        if (textSpan) textSpan.textContent = 'Save to Database';
+      }
+    }
+
+    function buildImageCellContent(rowNum) {
+      const st = rowImageSyncState[rowNum];
+      if (!st) {
+        const span = document.createElement('span');
+        span.className = 'empty-cell';
+        span.textContent = '—';
+        return span;
+      }
+
+      const displayFile = st.fileName || (st.courier ? `${st.awb}_${st.courier}.png` : `${st.awb}.png`);
+
+      if (st.status === 'loading') {
+        const pill = document.createElement('span');
+        pill.className = 'img-sync-pill';
+        pill.title = `Saving ${displayFile} to Google Drive (${st.channel || 'General'})...`;
+        pill.innerHTML = `<span class="multicolor-loader"></span><span>Syncing...</span>`;
+        return pill;
+      }
+
+      if (st.status === 'synced') {
+        const a = document.createElement('a');
+        a.href = st.viewUrl || '#';
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.className = 'drive-img-btn';
+        a.title = `Saved as ${st.channel || 'General'}/${displayFile} — Click to view full-quality PNG`;
+        a.innerHTML = `${SVG_IMAGE}`;
+        return a;
+      }
+
+      const span = document.createElement('span');
+      span.className = 'empty-cell';
+      span.textContent = '—';
+      return span;
+    }
+
+    function updateImageCellDom(rowNum) {
+      const cell = document.getElementById(`img-cell-${rowNum}`);
+      if (!cell) return;
+      cell.innerHTML = '';
+      cell.appendChild(buildImageCellContent(rowNum));
+    }
+
+    function renderTableHeaders() {
+      const thead = document.getElementById('tableHead');
+      const tr = document.createElement('tr');
+
+      const thSelect = document.createElement('th');
+      thSelect.className = 'th-select-all';
+      thSelect.innerHTML = `<input type="checkbox" id="thSelectAll" class="th-select-checkbox" title="Select / Deselect all tickets on this page" onchange="toggleSelectAllPage(this.checked)">`;
+      tr.appendChild(thSelect);
+
+      const thIndex = document.createElement('th');
+      thIndex.textContent = '#';
+      tr.appendChild(thIndex);
+
+      currentHeaders.forEach((h, idx) => {
+        const th = document.createElement('th');
+        th.className = 'col-header';
+        if (isEditableColumn(idx)) {
+          th.classList.add('editable-header');
+        } else if (String(h).trim().toLowerCase() === 'action') {
+          th.classList.add('action-header');
+        }
+
+        const thInner = document.createElement('div');
+        thInner.className = 'th-inner';
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'th-label';
+        labelSpan.textContent = h;
+        thInner.appendChild(labelSpan);
+
+        if (String(h).trim().toLowerCase() !== 'action') {
+          const filterBtn = document.createElement('button');
+          filterBtn.type = 'button';
+          const isFilterActive = !!(columnFilters[idx] && columnFilters[idx] instanceof Set);
+          filterBtn.className = 'th-filter-btn' + (isFilterActive ? ' is-active-filter' : '');
+          filterBtn.title = isFilterActive ? `Filter active on ${h} (Click to change)` : `Filter by ${h}`;
+          filterBtn.innerHTML = SVG_FILTER_ICON;
+          filterBtn.onclick = (e) => {
+            e.stopPropagation();
+            openColumnFilterDropdown(idx, filterBtn, e);
+          };
+          thInner.appendChild(filterBtn);
+        }
+
+        th.appendChild(thInner);
+        tr.appendChild(th);
+      });
+
+      thead.innerHTML = '';
+      thead.appendChild(tr);
+    }
+
+    function getCourierClass(courierName) {
+      const lower = (courierName || '').toLowerCase();
+      if (lower.includes('bluedart') || lower.includes('blue dart')) return 'courier-bluedart';
+      if (lower.includes('shadowfax')) return 'courier-shadowfax';
+      if (lower.includes('xpressbees') || lower.includes('xpress')) return 'courier-xpressbees';
+      if (lower.includes('ekart')) return 'courier-ekart';
+      if (lower.includes('delhivery')) return 'courier-delhivery';
+      return 'courier-default';
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`Copied AWB: ${text}`);
+      });
+    }
+
+    function stripCartoonEmojis(str) {
+      return str.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '').trim();
+    }
+
+    function getTotalPages(totalItems) {
+      return Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    }
+
+    function changePage(delta) {
+      const totalPages = getTotalPages(filteredRows.length);
+      const nextPage = Math.min(totalPages, Math.max(1, currentPage + delta));
+      if (nextPage !== currentPage) {
+        currentPage = nextPage;
+        renderTableBody(filteredRows);
+      }
+    }
+
+    function goToPage(pageNum) {
+      const totalPages = getTotalPages(filteredRows.length);
+      const parsed = parseInt(pageNum, 10);
+      if (isNaN(parsed)) return;
+      const clamped = Math.min(totalPages, Math.max(1, parsed));
+      currentPage = clamped;
+      renderTableBody(filteredRows);
+    }
+
+    function goToPageFromInput() {
+      const inputEl = document.getElementById('gotoPageInput');
+      if (!inputEl) return;
+      goToPage(inputEl.value);
+    }
+
+    function applyFilters(resetPage = false) {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const selectedCourier = document.getElementById('courierFilter').value;
+      const courierIdx = findHeaderIndex(['courier']);
+
+      filteredRows = currentRows.filter(row => {
+        if (selectedCourier && courierIdx !== -1) {
+          if (row.values[courierIdx] !== selectedCourier) return false;
+        }
+
+        // Apply column-specific dropdown filters
+        for (const [cIdxStr, allowedSet] of Object.entries(columnFilters)) {
+          if (allowedSet && allowedSet instanceof Set) {
+            const cIdx = parseInt(cIdxStr, 10);
+            const raw = (row.values[cIdx] !== undefined && row.values[cIdx] !== null) ? String(row.values[cIdx]).trim() : '';
+            const valKey = raw === '' ? '(Blanks)' : raw;
+            if (!allowedSet.has(valKey)) return false;
+          }
+        }
+
+        if (query) {
+          return row.values.some(val => String(val).toLowerCase().includes(query));
+        }
+        return true;
+      });
+
+      const totalPages = getTotalPages(filteredRows.length);
+      if (resetPage || currentPage > totalPages) {
+        currentPage = 1;
+      }
+
+      renderTableBody(filteredRows);
+    }
+
+    let activeFilterColIdx = null;
+    let activeFilterDistinctValues = [];
+    let tempFilterSelected = new Set();
+
+    function openColumnFilterDropdown(colIdx, anchorBtn, e) {
+      if (e) e.stopPropagation();
+      activeFilterColIdx = colIdx;
+
+      // Extract distinct values from currentRows for this column
+      const valCounts = new Map();
+      let hasBlanks = false;
+      currentRows.forEach(r => {
+        const raw = (r.values[colIdx] !== undefined && r.values[colIdx] !== null) ? String(r.values[colIdx]).trim() : '';
+        if (raw === '') {
+          hasBlanks = true;
+          valCounts.set('(Blanks)', (valCounts.get('(Blanks)') || 0) + 1);
+        } else {
+          valCounts.set(raw, (valCounts.get(raw) || 0) + 1);
+        }
+      });
+
+      let nonBlankVals = Array.from(valCounts.keys()).filter(v => v !== '(Blanks)');
+      const isAllNumeric = nonBlankVals.length > 0 && nonBlankVals.every(v => !isNaN(Number(v.replace(/,/g, ''))));
+      if (isAllNumeric) {
+        nonBlankVals.sort((a, b) => Number(a.replace(/,/g, '')) - Number(b.replace(/,/g, '')));
+      } else {
+        nonBlankVals.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      }
+      if (hasBlanks) {
+        nonBlankVals.push('(Blanks)');
+      }
+      activeFilterDistinctValues = nonBlankVals;
+
+      if (columnFilters[colIdx] && columnFilters[colIdx] instanceof Set) {
+        tempFilterSelected = new Set(columnFilters[colIdx]);
+      } else {
+        tempFilterSelected = new Set(activeFilterDistinctValues);
+      }
+
+      const searchInp = document.getElementById('colFilterSearchInput');
+      if (searchInp) searchInp.value = '';
+
+      renderFilterDropdownList('');
+
+      const dropdown = document.getElementById('colFilterDropdown');
+      if (!dropdown) return;
+
+      dropdown.style.display = 'flex';
+      const rect = anchorBtn.getBoundingClientRect();
+      let top = rect.bottom + 5;
+      let left = rect.left - 90;
+
+      dropdown.style.top = `${top}px`;
+      dropdown.style.left = `${left}px`;
+
+      const ddRect = dropdown.getBoundingClientRect();
+      if (ddRect.right > window.innerWidth - 12) {
+        left = window.innerWidth - ddRect.width - 16;
+      }
+      if (left < 10) left = 10;
+      if (ddRect.bottom > window.innerHeight - 10) {
+        top = rect.top - ddRect.height - 5;
+      }
+
+      dropdown.style.top = `${top}px`;
+      dropdown.style.left = `${left}px`;
+
+      setTimeout(() => {
+        if (searchInp) searchInp.focus();
+      }, 50);
+    }
+
+    function renderFilterDropdownList(searchTerm = '') {
+      const listEl = document.getElementById('colFilterList');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      const term = (searchTerm || '').trim().toLowerCase();
+      const visibleVals = activeFilterDistinctValues.filter(v => !term || v.toLowerCase().includes(term));
+
+      // Select All Option
+      const selectAllItem = document.createElement('label');
+      selectAllItem.className = 'col-filter-item is-select-all';
+      const selectAllChk = document.createElement('input');
+      selectAllChk.type = 'checkbox';
+      selectAllChk.id = 'filterSelectAllChk';
+
+      const allChecked = visibleVals.length > 0 && visibleVals.every(v => tempFilterSelected.has(v));
+      const someChecked = visibleVals.some(v => tempFilterSelected.has(v));
+      selectAllChk.checked = allChecked;
+      selectAllChk.indeterminate = !allChecked && someChecked;
+
+      selectAllChk.onchange = (e) => {
+        const isChecked = e.target.checked;
+        visibleVals.forEach(v => {
+          if (isChecked) tempFilterSelected.add(v);
+          else tempFilterSelected.delete(v);
+        });
+        renderFilterDropdownList(document.getElementById('colFilterSearchInput')?.value || '');
+      };
+
+      const selectAllText = document.createElement('span');
+      selectAllText.textContent = term ? '(Select All Search Results)' : '(Select All)';
+      selectAllItem.appendChild(selectAllChk);
+      selectAllItem.appendChild(selectAllText);
+      listEl.appendChild(selectAllItem);
+
+      if (visibleVals.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style.cssText = 'padding: 8px; font-size: 0.78rem; color: #94a3b8; text-align: center;';
+        emptyDiv.textContent = 'No matching values';
+        listEl.appendChild(emptyDiv);
+        return;
+      }
+
+      visibleVals.forEach(val => {
+        const item = document.createElement('label');
+        item.className = 'col-filter-item';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.value = val;
+        chk.checked = tempFilterSelected.has(val);
+
+        chk.onchange = (e) => {
+          if (e.target.checked) {
+            tempFilterSelected.add(val);
+          } else {
+            tempFilterSelected.delete(val);
+          }
+          const isAll = visibleVals.every(v => tempFilterSelected.has(v));
+          const isSome = visibleVals.some(v => tempFilterSelected.has(v));
+          selectAllChk.checked = isAll;
+          selectAllChk.indeterminate = !isAll && isSome;
+        };
+
+        const valSpan = document.createElement('span');
+        valSpan.textContent = val;
+        if (val === '(Blanks)') {
+          valSpan.style.fontStyle = 'italic';
+          valSpan.style.color = '#64748b';
+        }
+
+        item.appendChild(chk);
+        item.appendChild(valSpan);
+        listEl.appendChild(item);
+      });
+    }
+
+    function applyColumnFilterOk() {
+      if (activeFilterColIdx === null) return;
+      if (tempFilterSelected.size === activeFilterDistinctValues.length) {
+        delete columnFilters[activeFilterColIdx];
+      } else {
+        columnFilters[activeFilterColIdx] = new Set(tempFilterSelected);
+      }
+      const colName = currentHeaders[activeFilterColIdx] || 'Column';
+      const isFiltered = !!columnFilters[activeFilterColIdx];
+      closeColumnFilterDropdown();
+      renderTableHeaders();
+      applyFilters(true);
+      showToast(isFiltered ? `Filtered by "${colName}"` : `Filter cleared on "${colName}"`);
+    }
+
+    function clearActiveColumnFilter() {
+      if (activeFilterColIdx === null) return;
+      const colName = currentHeaders[activeFilterColIdx] || 'Column';
+      delete columnFilters[activeFilterColIdx];
+      closeColumnFilterDropdown();
+      renderTableHeaders();
+      applyFilters(true);
+      showToast(`Cleared filter on "${colName}"`);
+    }
+
+    function closeColumnFilterDropdown() {
+      const dropdown = document.getElementById('colFilterDropdown');
+      if (dropdown) dropdown.style.display = 'none';
+      activeFilterColIdx = null;
+    }
+
+    function getTicketColumnIndex() {
+      let ticketIdx = currentHeaders.findIndex(h => {
+        const l = String(h || '').toLowerCase().trim();
+        return l === 'ticket no' || l === 'ticket no.' || l === 'ticket id' || l === 'ticket number' || l === 'ticket';
+      });
+      if (ticketIdx === -1) {
+        ticketIdx = currentHeaders.findIndex(h => {
+          const l = String(h || '').toLowerCase().trim();
+          return l.includes('ticket') && !l.includes('status');
+        });
+      }
+      return ticketIdx;
+    }
+
+    function onRowCheckboxChange(rowNum, isChecked) {
+      if (isChecked) {
+        selectedRowNums.add(rowNum);
+      } else {
+        selectedRowNums.delete(rowNum);
+      }
+      updateSelectedCountUI();
+      const tr = document.querySelector(`input.row-select-checkbox[data-row-num="${rowNum}"]`)?.closest('tr');
+      if (tr) {
+        if (isChecked) tr.classList.add('row-selected');
+        else tr.classList.remove('row-selected');
+      }
+    }
+
+    function toggleSelectAllPage(isChecked) {
+      const startIdx = (currentPage - 1) * PAGE_SIZE;
+      const endIdx = Math.min(startIdx + PAGE_SIZE, filteredRows.length);
+      const pageRows = filteredRows.slice(startIdx, endIdx);
+
+      pageRows.forEach((row, idx) => {
+        const rowNum = row._row_num || (startIdx + idx + 1);
+        if (isChecked) {
+          selectedRowNums.add(rowNum);
+        } else {
+          selectedRowNums.delete(rowNum);
+        }
+      });
+
+      document.querySelectorAll('.row-select-checkbox').forEach(chk => {
+        chk.checked = isChecked;
+        const tr = chk.closest('tr');
+        if (tr) {
+          if (isChecked) tr.classList.add('row-selected');
+          else tr.classList.remove('row-selected');
+        }
+      });
+
+      updateSelectedCountUI();
+    }
+
+    function toggleSelectAllRows() {
+      const ticketIdx = getTicketColumnIndex();
+      const eligibleRows = filteredRows.filter(row => {
+        const tVal = ticketIdx !== -1 ? String(row.values[ticketIdx] || '').trim() : '';
+        return !!tVal;
+      });
+
+      const allEligibleSelected = eligibleRows.length > 0 && eligibleRows.every(row => {
+        const rowNum = row._row_num;
+        return selectedRowNums.has(rowNum);
+      });
+
+      if (allEligibleSelected) {
+        selectedRowNums.clear();
+        showToast("Deselected all tickets.", 2000);
+      } else {
+        eligibleRows.forEach(row => {
+          selectedRowNums.add(row._row_num);
+        });
+        showToast(`Selected ${eligibleRows.length} tickets ready to batch sync!`, 3000);
+      }
+
+      renderTableBody(filteredRows);
+      updateSelectedCountUI();
+    }
+
+    function updateSelectedCountUI() {
+      const count = selectedRowNums.size;
+      const btn = document.getElementById('btnBatchSyncSelected');
+      const countEl = document.getElementById('selectedTicketsCount');
+      if (countEl) countEl.textContent = count;
+      if (btn) btn.disabled = (count === 0 || isBatchSyncRunning);
+    }
+
+    function renderTableBody(rows) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+
+      const awbIdx = findHeaderIndex(['awb']);
+      const courierIdx = findHeaderIndex(['courier']);
+      const statusIdx = findHeaderIndex(['platform status']);
+      const imageIdx = findImageColumnIndex();
+      const actionIdx = findHeaderIndex(['action']);
+
+      const totalPages = getTotalPages(rows.length);
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+
+      const startIdx = (currentPage - 1) * PAGE_SIZE;
+      const endIdx = Math.min(startIdx + PAGE_SIZE, rows.length);
+      const pageRows = rows.slice(startIdx, endIdx);
+
+      // Update pagination bar UI
+      document.getElementById('currPageNum').textContent = currentPage;
+      document.getElementById('totalPagesNum').textContent = totalPages;
+      document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+      document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+      const gotoInput = document.getElementById('gotoPageInput');
+      if (gotoInput) {
+        gotoInput.max = totalPages;
+        gotoInput.value = currentPage;
+      }
+
+      if (pageRows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = currentHeaders.length + 2;
+        td.style.textAlign = 'center';
+        td.style.padding = '34px';
+        td.style.color = '#334155';
+        td.textContent =
+          currentMode === 'google_sheet'
+            ? 'No saved rows in this Month-Year sheet yet. Upload an Excel file above and click "Save to Database".'
+            : 'No matching rows found.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        document.getElementById('showingCount').textContent =
+          `Showing 0 of ${currentRows.length} rows (${currentHeaders.length} columns)`;
+      } else {
+        pageRows.forEach((row, idx) => {
+          const tr = document.createElement('tr');
+          const rowNum = row._row_num || (startIdx + idx + 1);
+
+          const isSelected = selectedRowNums.has(rowNum);
+          if (isSelected) tr.classList.add('row-selected');
+
+          // Checkbox column cell
+          const tdSelect = document.createElement('td');
+          tdSelect.className = 'select-cell';
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.className = 'row-select-checkbox';
+          chk.dataset.rowNum = rowNum;
+          chk.checked = isSelected;
+          chk.onchange = (e) => onRowCheckboxChange(rowNum, e.target.checked);
+          tdSelect.appendChild(chk);
+          tr.appendChild(tdSelect);
+
+          const tdNum = document.createElement('td');
+          tdNum.className = 'row-index';
+          tdNum.textContent = rowNum;
+          tr.appendChild(tdNum);
+
+          currentHeaders.forEach((_, colIdx) => {
+            const td = document.createElement('td');
+            td.dataset.rowNum = rowNum;
+            td.dataset.colIdx = colIdx;
+            const rawVal = row.values[colIdx] !== undefined ? String(row.values[colIdx]) : '';
+
+            if (isEditableColumn(colIdx)) {
+              const input = document.createElement('input');
+              input.type = 'text';
+              input.className = 'cell-type-input' + (rawVal.trim() !== '' ? ' has-value' : '');
+              input.value = rawVal;
+              input.placeholder = getEditablePlaceholder(colIdx);
+              input.dataset.rowNum = rowNum;
+              input.dataset.colIdx = colIdx;
+
+              input.addEventListener('input', (e) => {
+                const newVal = e.target.value;
+                row.values[colIdx] = newVal;
+                if (row.data && currentHeaders[colIdx]) {
+                  row.data[currentHeaders[colIdx]] = newVal;
+                }
+                input.classList.add('edited-dirty');
+              });
+
+              input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const nextInput = document.querySelector(
+                    `input.cell-type-input[data-row-num="${rowNum + 1}"][data-col-idx="${colIdx}"]`
+                  );
+                  if (nextInput) nextInput.focus();
+                }
+              });
+
+              td.appendChild(input);
+            } else if (colIdx === actionIdx) {
+              td.className = 'action-cell';
+              const div = document.createElement('div');
+              div.className = 'action-col-cell';
+              div.dataset.rowNum = rowNum;
+              div.dataset.colIdx = colIdx;
+
+              // 1. Ticket Action Button (Purple) - Open Portal / Raise Ticket
+              const btnTicket = document.createElement('button');
+              btnTicket.type = 'button';
+              btnTicket.className = 'btn-action-base btn-action-ticket';
+              btnTicket.title = 'Open Portal & Raise Ticket (Ajio / Myntra)';
+              btnTicket.dataset.rowNum = rowNum;
+              btnTicket.onclick = (e) => handleActionClick(row, rowNum, e);
+              btnTicket.innerHTML = `<svg class="action-btn-svg action-ticket-svg" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>`;
+              div.appendChild(btnTicket);
+
+              // 2. Sync / Refresh Action Button (Green) - Check Status & Scrape Comments
+              const btnSync = document.createElement('button');
+              btnSync.type = 'button';
+              btnSync.className = 'btn-action-base btn-action-sync';
+              btnSync.title = 'Sync Ticket Status & Remark from Ajio Help Center';
+              btnSync.dataset.rowNum = rowNum;
+              btnSync.onclick = (e) => handleSyncClick(row, rowNum, e);
+              btnSync.innerHTML = `<svg class="action-btn-svg action-sync-svg" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>`;
+              div.appendChild(btnSync);
+
+              td.appendChild(div);
+            } else if (colIdx === imageIdx) {
+              td.id = `img-cell-${rowNum}`;
+              td.appendChild(buildImageCellContent(rowNum));
+            } else if (rawVal === '') {
+              const span = document.createElement('span');
+              span.className = 'empty-cell';
+              span.textContent = '—';
+              td.appendChild(span);
+            } else if (colIdx === awbIdx) {
+              const badge = document.createElement('span');
+              badge.className = 'awb-badge';
+              badge.title = 'Click to copy AWB';
+              badge.onclick = () => copyText(rawVal);
+              badge.innerHTML = `<span>${escapeHtml(rawVal)}</span><span class="copy-btn">${SVG_COPY}</span>`;
+              td.appendChild(badge);
+            } else if (colIdx === courierIdx) {
+              const badge = document.createElement('span');
+              badge.className = `courier-badge ${getCourierClass(rawVal)}`;
+              badge.textContent = rawVal;
+              td.appendChild(badge);
+            } else if (colIdx === statusIdx) {
+              const badge = document.createElement('span');
+              badge.className = 'status-badge';
+              badge.textContent = rawVal;
+              td.appendChild(badge);
+            } else {
+              td.textContent = stripCartoonEmojis(rawVal) || rawVal;
+            }
+
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('showingCount').textContent =
+          `Showing ${startIdx + 1}–${endIdx} of ${rows.length} rows (${currentHeaders.length} columns)`;
+      }
+
+      updateSelectedCountUI();
+      const thSelect = document.getElementById('thSelectAll');
+      if (thSelect) {
+        const allPageSelected = pageRows.length > 0 && pageRows.every(r => selectedRowNums.has(r._row_num || 0));
+        thSelect.checked = allPageSelected;
+      }
+    }
+
+    function closeSystemModal() {
+      const modal = document.getElementById('systemAlertModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function showSystemErrorDialog({
+      type = 'danger', // 'danger' | 'warning' | 'info'
+      icon = '🔒',
+      title = 'Portal Alert',
+      subtitle = '',
+      alertLabel = 'Portal Message:',
+      alertMsg = '',
+      guideTitle = 'Recommended Action:',
+      guideSteps = [],
+      actionBtnText = '',
+      actionBtnUrl = ''
+    }) {
+      const modal = document.getElementById('systemAlertModal');
+      const header = document.getElementById('systemModalHeader');
+      const iconBadge = document.getElementById('systemModalIcon');
+      const titleEl = document.getElementById('systemModalTitle');
+      const subEl = document.getElementById('systemModalSubtitle');
+      const alertBox = document.getElementById('systemModalAlertBox');
+      const alertLabelEl = document.getElementById('systemModalAlertLabel');
+      const alertMsgEl = document.getElementById('systemModalAlertMsg');
+      const guideBox = document.getElementById('systemModalGuideBox');
+      const guideTitleEl = document.getElementById('systemModalGuideTitle');
+      const guideList = document.getElementById('systemModalGuideSteps');
+      const actionBtn = document.getElementById('systemModalActionBtn');
+
+      if (!modal) return;
+
+      // Header styling
+      header.className = 'system-modal-header ' + (type === 'danger' ? 'header-danger' : (type === 'warning' ? 'header-warning' : 'header-info'));
+      iconBadge.textContent = icon;
+      titleEl.textContent = title;
+      subEl.textContent = subtitle;
+
+      // Alert Box
+      alertBox.className = 'system-modal-alert-box ' + (type === 'warning' ? 'alert-warn' : '');
+      alertLabelEl.textContent = alertLabel;
+      alertMsgEl.textContent = alertMsg;
+
+      // Guide Box
+      if (guideSteps && guideSteps.length > 0) {
+        guideBox.style.display = 'block';
+        guideTitleEl.textContent = guideTitle;
+        guideList.innerHTML = '';
+        guideSteps.forEach(step => {
+          const li = document.createElement('li');
+          li.innerHTML = step;
+          guideList.appendChild(li);
+        });
+      } else {
+        guideBox.style.display = 'none';
+      }
+
+      // Action Button
+      if (actionBtnText && actionBtnUrl) {
+        actionBtn.style.display = 'inline-flex';
+        actionBtn.textContent = actionBtnText;
+        if (actionBtnUrl === 'reload' || actionBtnUrl.includes('reload')) {
+          actionBtn.href = '#';
+          actionBtn.onclick = (e) => { e.preventDefault(); window.location.reload(); };
+        } else {
+          actionBtn.href = actionBtnUrl;
+          actionBtn.onclick = null;
+        }
+      } else {
+        actionBtn.style.display = 'none';
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function handleSyncErrorInUi({ row, rowNum, ticketId, orderId, partyCode, seller, ticketStatusIdx, remarkIdx, errorMsg }) {
+      const errLower = String(errorMsg || '').toLowerCase();
+      let statusVal = '❌ Error';
+      let remarkVal = errorMsg || 'Sync failed on portal';
+      let modalType = 'danger';
+      let modalIcon = '❌';
+      let modalTitle = 'Ajio Sync Error';
+      let guideSteps = [];
+      let actionBtnText = '';
+      let actionBtnUrl = '';
+
+      if (errLower.includes('context invalidated') || errLower.includes('reloaded') || errLower.includes('refresh') || errLower.includes('extension context')) {
+        statusVal = '🔄 Refresh Page';
+        remarkVal = 'Extension was reloaded. Please refresh (F5) this page to reconnect.';
+        modalType = 'warning';
+        modalIcon = '🔄';
+        modalTitle = 'Extension Reloaded - Refresh Required';
+        guideSteps = [
+          `<b>Karan:</b> Chrome Extensions me extension ko reload kiya gaya tha, isliye open page ka bridge connection reset ho gaya.`,
+          `<b>Solution:</b> Is page (<b>localhost:5000</b>) ko ek baar refresh karein (<b>F5</b> ya neeche diye button par click karein).`,
+          `<b>Next:</b> Refresh hone ke baad dobara Green Sync button dabayein, automation successfully chalega.`
+        ];
+        actionBtnText = 'Refresh Page (F5)';
+        actionBtnUrl = 'reload';
+      } else if (errLower.includes('account is locked') || errLower.includes('locked') || errLower.includes('reset your password')) {
+        statusVal = '🔒 Account Locked';
+        remarkVal = 'Ajio: Account is locked. Please reset password on seller.ajio.com.';
+        modalType = 'danger';
+        modalIcon = '🔒';
+        modalTitle = `Ajio Account Locked (Party ${partyCode || seller})`;
+        guideSteps = [
+          `<b>Step 1:</b> Party <b>${partyCode || seller}</b> ka Reliance / Ajio portal password lock ho gaya hai.`,
+          `<b>Step 2:</b> Ajio Seller portal (<a href="https://seller.ajio.com" target="_blank" style="color:#2563eb;text-decoration:underline;font-weight:600;">seller.ajio.com</a>) open karein aur "Forgot Password" se password reset karein.`,
+          `<b>Step 3:</b> Naya password apne Google Sheet (Master ID & Password sheet) me update karein.`,
+          `<b>Step 4:</b> Uske baad yaha aakar Sync button par dobara click karein.`
+        ];
+        actionBtnText = 'Open seller.ajio.com to Reset';
+        actionBtnUrl = 'https://seller.ajio.com/';
+      } else if (errLower.includes('not found') || errLower.includes('table not loaded')) {
+        statusVal = '⚠️ Not Found';
+        remarkVal = `Ticket ${ticketId || orderId} not found in Ajio Help Center table.`;
+        modalType = 'warning';
+        modalIcon = '⚠️';
+        modalTitle = `Ticket Not Found in Help Center (#${ticketId || orderId})`;
+        guideSteps = [
+          `<b>Check 1:</b> Ticket ID <b>#${ticketId}</b> Ajio Help Center table me nahi mila.`,
+          `<b>Check 2:</b> Verify karein ki kya ye ticket isi Party (<b>${partyCode || seller}</b>) me create hua tha?`,
+          `<b>Check 3:</b> Ajio Help Center default me "Last 30 Days" ke tickets dikhata hai. Agar ticket purana hai, to portal par date filter badal kar check karein.`,
+          `<b>Quick Action:</b> Aap Purple Ticket button se is Party ka Help Center portal direct open karke check kar sakte hain.`
+        ];
+        actionBtnText = 'Open Ajio Help Center';
+        actionBtnUrl = 'https://seller.ajio.com/vmsui/helpCenter';
+      } else if (errLower.includes('invalid') && (errLower.includes('password') || errLower.includes('username') || errLower.includes('credentials'))) {
+        statusVal = '❌ Wrong Password';
+        remarkVal = `Ajio: Invalid credentials in Google Sheet for Party ${partyCode || seller}.`;
+        modalType = 'danger';
+        modalIcon = '🔑';
+        modalTitle = `Wrong Password / Credentials (Party ${partyCode || seller})`;
+        guideSteps = [
+          `<b>Reason:</b> Google Sheet me Party <b>${partyCode || seller}</b> ka password portal se match nahi kar raha.`,
+          `<b>Fix:</b> Apne Google Sheet (Master ID & Password sheet) me working username aur password check karke update karein.`,
+          `<b>Note:</b> Baar baar galat password try karne se ID lock ho sakti hai, isliye sheet me sahi password verify karein.`
+        ];
+        actionBtnText = 'Open Ajio Login';
+        actionBtnUrl = 'https://seller.ajio.com/';
+      } else {
+        statusVal = '❌ Sync Failed';
+        remarkVal = errorMsg;
+        modalType = 'danger';
+        modalIcon = '❌';
+        modalTitle = `Ajio Sync Error (Party ${partyCode || seller})`;
+        guideSteps = [
+          `<b>Details:</b> ${escapeHtml(errorMsg)}`,
+          `<b>Solution:</b> Internet connection verify karein ya kuch samay baad dobara try karein.`
+        ];
+      }
+
+      // 1. Update row in memory
+      if (ticketStatusIdx !== -1) {
+        row.values[ticketStatusIdx] = statusVal;
+        if (row.data && currentHeaders[ticketStatusIdx]) row.data[currentHeaders[ticketStatusIdx]] = statusVal;
+      }
+      if (remarkIdx !== -1) {
+        row.values[remarkIdx] = remarkVal;
+        if (row.data && currentHeaders[remarkIdx]) row.data[currentHeaders[remarkIdx]] = remarkVal;
+      }
+
+      // 2. Update DOM inputs with error styles
+      if (ticketStatusIdx !== -1) {
+        const stInput = document.querySelector(`input.cell-type-input[data-row-num="${rowNum}"][data-col-idx="${ticketStatusIdx}"]`);
+        if (stInput) {
+          stInput.value = statusVal;
+          stInput.classList.remove('status-locked', 'status-warn', 'status-error', 'status-success');
+          stInput.classList.add('has-value', 'edited-dirty', 'sync-highlight');
+          if (statusVal.includes('Locked')) stInput.classList.add('status-locked');
+          else if (statusVal.includes('Not Found')) stInput.classList.add('status-warn');
+          else stInput.classList.add('status-error');
+        }
+      }
+      if (remarkIdx !== -1) {
+        const remInput = document.querySelector(`input.cell-type-input[data-row-num="${rowNum}"][data-col-idx="${remarkIdx}"]`);
+        if (remInput) {
+          remInput.value = remarkVal;
+          remInput.classList.add('has-value', 'edited-dirty', 'sync-highlight');
+        }
+      }
+
+      // 3. Show System Error Modal
+      showSystemErrorDialog({
+        type: modalType,
+        icon: modalIcon,
+        title: modalTitle,
+        subtitle: `Party: ${partyCode || seller} • Row #${rowNum}${ticketId ? ' • Ticket #' + ticketId : ''}${orderId ? ' • Order #' + orderId : ''}`,
+        alertLabel: 'Ajio Portal Error:',
+        alertMsg: errorMsg,
+        guideTitle: 'Next Steps & Solution:',
+        guideSteps: guideSteps,
+        actionBtnText: actionBtnText,
+        actionBtnUrl: actionBtnUrl
+      });
+
+      // 4. Auto-save DISABLED — user saves manually
+
+      // 5. Toast
+      showToast(`${modalIcon} ${statusVal}: ${errorMsg}`, 6000);
+    }
+
+    function handleActionClick(row, rowNum, e) {
+      if (e) e.stopPropagation();
+
+      const channelIdx = findHeaderIndex(['channel']);
+      const sellerIdx = findHeaderIndex(['seller']);
+      const orderIdx = findHeaderIndex(['order id', 'order']);
+      const awbIdx = findHeaderIndex(['awb no.', 'awb']);
+      let ticketIdx = currentHeaders.findIndex(h => {
+        const l = String(h || '').toLowerCase().trim();
+        return l === 'ticket no' || l === 'ticket no.' || l === 'ticket id' || l === 'ticket number' || l === 'ticket';
+      });
+      if (ticketIdx === -1) {
+        ticketIdx = currentHeaders.findIndex(h => {
+          const l = String(h || '').toLowerCase().trim();
+          return l.includes('ticket') && !l.includes('status');
+        });
+      }
+      const ticketStatusIdx = findHeaderIndex(['ticket status']);
+      const remarkIdx = findHeaderIndex(['remark']);
+
+      const channel = (channelIdx !== -1 && row.values[channelIdx]) ? String(row.values[channelIdx]).trim().toLowerCase() : '';
+      const seller = (sellerIdx !== -1 && row.values[sellerIdx]) ? String(row.values[sellerIdx]).trim() : '';
+      const orderId = (orderIdx !== -1 && row.values[orderIdx]) ? String(row.values[orderIdx]).trim() : '';
+      const ticketId = (ticketIdx !== -1 && row.values[ticketIdx]) ? String(row.values[ticketIdx]).trim() : '';
+      const awb = row.awb || (awbIdx !== -1 && row.values[awbIdx]) || `Row ${rowNum}`;
+
+      let partyCode = '';
+      const matchDigits = seller.match(/\b(\d{1,4})\b/);
+      if (matchDigits) {
+        partyCode = matchDigits[1];
+      } else {
+        partyCode = seller;
+      }
+
+      const ticketBtn = document.querySelector(`.btn-action-ticket[data-row-num="${rowNum}"]`);
+      if (ticketBtn) ticketBtn.classList.add('is-syncing');
+
+      showToast(`Opening Portal & Raise Ticket in a new tab for Party: ${partyCode || seller}…`, 4000);
+
+      console.log("⚡ [Web App] Dispatched MASTER_AUTOMATION_OPEN_TICKET:", {
+        platform: channel.includes('ajio') ? 'ajio' : (channel.includes('myntra') ? 'myntra' : 'ajio'),
+        partyCode: partyCode,
+        ticketId: ticketId,
+        orderId: orderId,
+        rowNum: rowNum
+      });
+
+      window.postMessage({
+        type: "MASTER_AUTOMATION_OPEN_TICKET",
+        platform: channel.includes('ajio') ? 'ajio' : (channel.includes('myntra') ? 'myntra' : 'ajio'),
+        partyCode: partyCode,
+        ticketId: ticketId,
+        orderId: orderId,
+        rowNum: rowNum
+      }, "*");
+
+      let answered = false;
+      const openTicketListener = (evt) => {
+        if (!evt.data) return;
+
+        if (evt.data.type === "MASTER_AUTOMATION_PROGRESS" && (evt.data.vendor === partyCode || !partyCode)) {
+          showToast(`[Ajio Portal] ${evt.data.note || evt.data.stepText || 'Working…'}`);
+        } else if (evt.data.type === "MASTER_AUTOMATION_OPEN_TICKET_COMPLETE" && Number(evt.data.rowNum) === Number(rowNum)) {
+          answered = true;
+          window.removeEventListener("message", openTicketListener);
+          if (ticketBtn) ticketBtn.classList.remove('is-syncing');
+          showToast(`✅ Ajio Portal opened & Raise Ticket clicked for Party: ${partyCode || seller}!`, 5000);
+        } else if (evt.data.type === "MASTER_AUTOMATION_OPEN_TICKET_ERROR" && Number(evt.data.rowNum) === Number(rowNum)) {
+          answered = true;
+          window.removeEventListener("message", openTicketListener);
+          if (ticketBtn) ticketBtn.classList.remove('is-syncing');
+
+          handleSyncErrorInUi({
+            row,
+            rowNum,
+            ticketId,
+            orderId,
+            partyCode,
+            seller,
+            ticketStatusIdx,
+            remarkIdx,
+            errorMsg: evt.data.error || 'Failed to open portal'
+          });
+        }
+      };
+
+      window.addEventListener("message", openTicketListener);
+
+      setTimeout(() => {
+        if (!answered && ticketBtn) {
+          ticketBtn.classList.remove('is-syncing');
+        }
+      }, 35000);
+    }
+
+    function handleSyncClick(row, rowNum, e) {
+      if (e) e.stopPropagation();
+
+      const channelIdx = findHeaderIndex(['channel']);
+      const sellerIdx = findHeaderIndex(['seller']);
+      let ticketIdx = currentHeaders.findIndex(h => {
+        const l = String(h || '').toLowerCase().trim();
+        return l === 'ticket no' || l === 'ticket no.' || l === 'ticket id' || l === 'ticket number' || l === 'ticket';
+      });
+      if (ticketIdx === -1) {
+        ticketIdx = currentHeaders.findIndex(h => {
+          const l = String(h || '').toLowerCase().trim();
+          return l.includes('ticket') && !l.includes('status');
+        });
+      }
+      const orderIdx = findHeaderIndex(['order id', 'order']);
+      const ticketStatusIdx = getTicketStatusColumnIndex();
+      const remarkIdx = findHeaderIndex(['remark']);
+
+      const channel = (channelIdx !== -1 && row.values[channelIdx]) ? String(row.values[channelIdx]).trim().toLowerCase() : '';
+      const seller = (sellerIdx !== -1 && row.values[sellerIdx]) ? String(row.values[sellerIdx]).trim() : '';
+      const ticketId = (ticketIdx !== -1 && row.values[ticketIdx]) ? String(row.values[ticketIdx]).trim() : '';
+      const orderId = (orderIdx !== -1 && row.values[orderIdx]) ? String(row.values[orderIdx]).trim() : '';
+
+      if (!ticketId) {
+        showToast(`Row #${rowNum}: Ticket ID is blank. Please enter Ticket No in the column first or raise ticket.`, 6000);
+        return;
+      }
+
+      // Extract party code (e.g. "261-viral girls-Ajiosale" -> "261")
+      let partyCode = '';
+      const matchDigits = seller.match(/\b(\d{1,4})\b/);
+      if (matchDigits) {
+        partyCode = matchDigits[1];
+      } else {
+        partyCode = seller;
+      }
+
+      const syncBtn = document.querySelector(`.btn-action-sync[data-row-num="${rowNum}"]`);
+      if (syncBtn) syncBtn.classList.add('is-syncing');
+
+      showToast(`⚡ Syncing Ticket #${ticketId} (Party: ${partyCode || seller}) via Backend…`, 5000);
+
+      const syncStartTime = performance.now();
+      const syncPayload = {
+        partyCode: partyCode,
+        ticketId: ticketId,
+        orderId: orderId,
+        rowNum: rowNum
+      };
+
+      console.group(`%c⚡ [SINGLE SYNC] Ticket #${ticketId} | Party: ${partyCode || seller}`, 'color: #2563eb; font-weight: bold; font-size: 13px;');
+      console.log('%c📤 [REQUEST PAYLOAD SENT]', 'color: #0284c7; font-weight: bold;', {
+        endpoint: '/api/sync-ticket-backend',
+        timestamp: new Date().toLocaleTimeString(),
+        payload: syncPayload
+      });
+
+      // Call Backend Playwright Scraper directly (No extension required!)
+      fetch('/api/sync-ticket-backend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(syncPayload)
+      })
+      .then(r => r.json())
+      .then(res => {
+        const elapsedSec = ((performance.now() - syncStartTime) / 1000).toFixed(2);
+        if (syncBtn) syncBtn.classList.remove('is-syncing');
+
+        if (res.ok) {
+          const finalStatus = res.status || 'UNKNOWN';
+          const finalComment = res.lastComment || '';
+
+          console.log(`%c📥 [RESPONSE DATA RECEIVED] (Took ${elapsedSec}s)`, 'color: #16a34a; font-weight: bold;', {
+            ticketId: ticketId,
+            status: finalStatus,
+            lastComment: finalComment,
+            partyCode: res.partyCode,
+            totalTimeTaken: `${elapsedSec} seconds`,
+            serverTime: res.serverElapsedSeconds ? `${res.serverElapsedSeconds}s` : 'N/A',
+            fullResponse: res
+          });
+          console.groupEnd();
+
+          // 1. Update in-memory data
+          if (ticketStatusIdx !== -1) {
+            row.values[ticketStatusIdx] = finalStatus;
+            if (row.data && currentHeaders[ticketStatusIdx]) row.data[currentHeaders[ticketStatusIdx]] = finalStatus;
+          }
+          if (remarkIdx !== -1) {
+            row.values[remarkIdx] = finalComment;
+            if (row.data && currentHeaders[remarkIdx]) row.data[currentHeaders[remarkIdx]] = finalComment;
+          }
+
+          // 2. Update DOM row
+          let targetTr = null;
+          const allTbodyTrs = Array.from(document.querySelectorAll('tbody tr'));
+          if (ticketId) {
+            for (let tri = 0; tri < allTbodyTrs.length; tri++) {
+              const tr = allTbodyTrs[tri];
+              const found = Array.from(tr.querySelectorAll('td')).some(td => {
+                const inp = td.querySelector('input');
+                const val = inp ? (inp.value || '').trim() : (td.textContent || '').trim();
+                return val === String(ticketId).trim();
+              });
+              if (found) { targetTr = tr; break; }
+            }
+          }
+          if (!targetTr) targetTr = document.querySelector(`input[data-row-num="${rowNum}"]`)?.closest('tr');
+
+          if (targetTr) {
+            if (ticketStatusIdx !== -1) {
+              const stInput = targetTr.querySelector(`input.cell-type-input[data-col-idx="${ticketStatusIdx}"]`);
+              if (stInput) {
+                stInput.value = finalStatus;
+                stInput.classList.remove('status-locked', 'status-warn', 'status-error');
+                stInput.classList.add('has-value', 'edited-dirty', 'sync-highlight', 'status-success');
+              } else {
+                const td = targetTr.querySelector(`td[data-col-idx="${ticketStatusIdx}"]`);
+                if (td) td.innerHTML = `<span class="status-badge sync-highlight status-success">${escapeHtml(finalStatus)}</span>`;
+              }
+            }
+            if (remarkIdx !== -1 && finalComment) {
+              const remInput = targetTr.querySelector(`input.cell-type-input[data-col-idx="${remarkIdx}"]`);
+              if (remInput) {
+                remInput.value = finalComment;
+                remInput.classList.add('has-value', 'edited-dirty', 'sync-highlight');
+              } else {
+                const td = targetTr.querySelector(`td[data-col-idx="${remarkIdx}"]`);
+                if (td) { td.textContent = finalComment; td.classList.add('sync-highlight'); }
+              }
+            }
+          }
+
+          showToast(`✅ Synced Ticket #${ticketId}: Status "${finalStatus}" (${elapsedSec}s)`, 6000);
+        } else {
+          console.warn(`%c⚠️ [SYNC FAILED] (Took ${elapsedSec}s)`, 'color: #d97706; font-weight: bold;', {
+            error: res.error,
+            totalTimeTaken: `${elapsedSec} seconds`,
+            fullResponse: res
+          });
+          console.groupEnd();
+          showToast(`❌ Sync Failed: ${res.error || 'Could not fetch status'} (${elapsedSec}s)`, 7000);
+        }
+      })
+      .catch(err => {
+        const elapsedSec = ((performance.now() - syncStartTime) / 1000).toFixed(2);
+        if (syncBtn) syncBtn.classList.remove('is-syncing');
+        console.error(`%c❌ [NETWORK / SERVER ERROR] (Took ${elapsedSec}s)`, 'color: #dc2626; font-weight: bold;', {
+          error: err.message,
+          totalTimeTaken: `${elapsedSec} seconds`
+        });
+        console.groupEnd();
+        showToast(`❌ Server Error: ${err.message}`, 7000);
+      });
+
+      return; // Handled directly via Backend API!
+
+      let answered = false;
+      const progressListener = (evt) => {
+        if (!evt.data) return;
+
+        // Progress broadcast
+        if ((evt.data.type === "MASTER_AUTOMATION_SYNC_PROGRESS" || evt.data.type === "MASTER_AUTOMATION_PROGRESS") &&
+            (String(evt.data.ticketId) === String(ticketId) || String(evt.data.vendor) === String(partyCode) || !evt.data.vendor)) {
+          answered = true;
+          showToast(`[Ajio Sync] ${evt.data.note || evt.data.stepText || 'Working…'}`);
+        }
+        // Completion broadcast
+        else if (evt.data.type === "MASTER_AUTOMATION_SYNC_COMPLETE" && (String(evt.data.ticketId) === String(ticketId) || Number(evt.data.rowNum) === Number(rowNum))) {
+          answered = true;
+          window.removeEventListener("message", progressListener);
+          if (syncBtn) syncBtn.classList.remove('is-syncing');
+
+          const finalStatus = evt.data.status || 'UNKNOWN';
+          const finalComment = evt.data.lastComment || '';
+
+          // 1. Update row values in memory
+          if (ticketStatusIdx !== -1) {
+            row.values[ticketStatusIdx] = finalStatus;
+            if (row.data && currentHeaders[ticketStatusIdx]) row.data[currentHeaders[ticketStatusIdx]] = finalStatus;
+          }
+          if (remarkIdx !== -1) {
+            row.values[remarkIdx] = finalComment;
+            if (row.data && currentHeaders[remarkIdx]) row.data[currentHeaders[remarkIdx]] = finalComment;
+          }
+
+          // 2. Update DOM inputs with highlight animation — locate row by ticketId directly!
+          let targetTr = null;
+          const allTbodyTrs = Array.from(document.querySelectorAll('tbody tr'));
+          if (ticketId) {
+            for (let tri = 0; tri < allTbodyTrs.length; tri++) {
+              const tr = allTbodyTrs[tri];
+              const found = Array.from(tr.querySelectorAll('td')).some(td => {
+                const inp = td.querySelector('input');
+                const val = inp ? (inp.value || '').trim() : (td.textContent || '').trim();
+                return val === String(ticketId).trim();
+              });
+              if (found) { targetTr = tr; break; }
+            }
+          }
+          if (!targetTr) {
+            targetTr = document.querySelector(`input[data-row-num="${rowNum}"]`)?.closest('tr');
+          }
+
+          if (targetTr) {
+            if (ticketStatusIdx !== -1) {
+              const stInput = targetTr.querySelector(`input.cell-type-input[data-col-idx="${ticketStatusIdx}"]`);
+              if (stInput) {
+                stInput.value = finalStatus;
+                stInput.classList.remove('status-locked', 'status-warn', 'status-error');
+                stInput.classList.add('has-value', 'edited-dirty', 'sync-highlight', 'status-success');
+              } else {
+                const td = targetTr.querySelector(`td[data-col-idx="${ticketStatusIdx}"]`);
+                if (td) td.innerHTML = `<span class="status-badge sync-highlight status-success">${escapeHtml(finalStatus)}</span>`;
+              }
+            }
+            if (remarkIdx !== -1 && finalComment) {
+              const remInput = targetTr.querySelector(`input.cell-type-input[data-col-idx="${remarkIdx}"]`);
+              if (remInput) {
+                remInput.value = finalComment;
+                remInput.classList.add('has-value', 'edited-dirty', 'sync-highlight');
+              } else {
+                const td = targetTr.querySelector(`td[data-col-idx="${remarkIdx}"]`);
+                if (td) { td.textContent = finalComment; td.classList.add('sync-highlight'); }
+              }
+            }
+          } else {
+            if (ticketStatusIdx !== -1) {
+              const stInput = document.querySelector(`input.cell-type-input[data-row-num="${rowNum}"][data-col-idx="${ticketStatusIdx}"]`);
+              if (stInput) {
+                stInput.value = finalStatus;
+                stInput.classList.add('has-value', 'edited-dirty', 'sync-highlight', 'status-success');
+              }
+            }
+            if (remarkIdx !== -1 && finalComment) {
+              const remInput = document.querySelector(`input.cell-type-input[data-row-num="${rowNum}"][data-col-idx="${remarkIdx}"]`);
+              if (remInput) {
+                remInput.value = finalComment;
+                remInput.classList.add('has-value', 'edited-dirty', 'sync-highlight');
+              }
+            }
+          }
+
+          showToast(`✅ Synced Ticket ${ticketId}: Status "${finalStatus}" — Data updated in table. Save manually when ready.`, 6000);
+
+          // Auto-save DISABLED — user saves manually via Save button
+        }
+        // Error broadcast
+        else if (evt.data.type === "MASTER_AUTOMATION_SYNC_ERROR" && (String(evt.data.ticketId) === String(ticketId) || Number(evt.data.rowNum) === Number(rowNum))) {
+          answered = true;
+          window.removeEventListener("message", progressListener);
+          if (syncBtn) syncBtn.classList.remove('is-syncing');
+
+          const errorMsg = evt.data.error || 'Portal error';
+          handleSyncErrorInUi({
+            row,
+            rowNum,
+            ticketId,
+            orderId,
+            partyCode: evt.data.partyCode || partyCode,
+            seller,
+            ticketStatusIdx,
+            remarkIdx,
+            errorMsg
+          });
+        }
+      };
+
+      window.addEventListener("message", progressListener);
+
+      // Timeout detection if extension is not installed or enabled
+      setTimeout(() => {
+        if (!answered) {
+          if (!isExtInstalled && !document.documentElement.getAttribute("data-master-automation-installed")) {
+            if (syncBtn) syncBtn.classList.remove('is-syncing');
+            window.removeEventListener("message", progressListener);
+            showToast("⚠ Master Automation Extension not active. Please load or reload the extension in chrome://extensions and refresh this page.", 6500);
+          }
+        }
+      }, 5000);
+    }
+
+    async function handleBatchSyncClick() {
+      if (isBatchSyncRunning) {
+        showToast("Batch sync is already running in background!", 4000);
+        return;
+      }
+
+      if (selectedRowNums.size === 0) {
+        showToast("Please select at least 1 ticket using checkboxes first.", 4000);
+        return;
+      }
+
+      const ticketIdx = getTicketColumnIndex();
+      const orderIdx = findHeaderIndex(['order id', 'order']);
+      const sellerIdx = findHeaderIndex(['seller']);
+      const channelIdx = findHeaderIndex(['channel']);
+
+      const selectedItems = [];
+      for (let i = 0; i < currentRows.length; i++) {
+        const row = currentRows[i];
+        const rowNum = row._row_num || (i + 1);
+        row._row_num = rowNum;
+        if (selectedRowNums.has(rowNum)) {
+          const ticketId = ticketIdx !== -1 ? String(row.values[ticketIdx] || '').trim() : '';
+          const orderId = orderIdx !== -1 ? String(row.values[orderIdx] || '').trim() : '';
+          const seller = sellerIdx !== -1 ? String(row.values[sellerIdx] || '').trim() : '';
+          const channel = channelIdx !== -1 ? String(row.values[channelIdx] || '').trim().toLowerCase() : '';
+
+          if (!ticketId) continue;
+
+          let partyCode = '';
+          const matchDigits = seller.match(/\b(\d{1,4})\b/);
+          if (matchDigits) {
+            partyCode = matchDigits[1];
+          } else {
+            partyCode = seller;
+          }
+
+          selectedItems.push({
+            rowNum,
+            ticketId,
+            orderId,
+            seller,
+            partyCode: partyCode || "262",
+            channel: channel.includes('ajio') ? 'ajio' : 'ajio',
+            row
+          });
+        }
+      }
+
+      if (selectedItems.length === 0) {
+        showToast("None of the selected rows have a Ticket No. Please enter ticket numbers first.", 5000);
+        return;
+      }
+
+      isBatchSyncRunning = true;
+      const btn = document.getElementById('btnBatchSyncSelected');
+      if (btn) {
+        btn.classList.add('is-batch-syncing');
+        btn.disabled = true;
+      }
+      const progBox = document.getElementById('batchProgressInfo');
+      const progText = document.getElementById('batchProgressText');
+      if (progBox) progBox.style.display = 'inline-flex';
+      if (progText) progText.textContent = `Connecting Ajio for ${selectedItems.length} tickets…`;
+
+      showToast(`⚡ Starting Batch Sync for ${selectedItems.length} tickets (Party: ${selectedItems[0].partyCode})…`, 4000);
+
+      const distinctParties = Array.from(new Set(selectedItems.map(i => i.partyCode)));
+      const partyLabel = distinctParties.join(', ');
+
+      showToast(`⚡ Starting Batch Sync for ${selectedItems.length} tickets (Parties: ${partyLabel})…`, 4500);
+
+      // Start rolling watchdog — resets after each completed ticket!
+      resetBatchSyncWatchdog();
+
+      batchStartTime = performance.now();
+      const batchPayload = {
+        tickets: selectedItems.map(item => ({
+          ticketId: item.ticketId,
+          orderId: item.orderId,
+          partyCode: item.partyCode,
+          rowNum: item.rowNum
+        }))
+      };
+
+      console.group(`%c⚡ [BATCH SYNC STARTED] (${selectedItems.length} Tickets)`, 'color: #7c3aed; font-weight: bold; font-size: 13px;');
+      console.log('%c📤 [BATCH REQUEST PAYLOAD SENT]', 'color: #0284c7; font-weight: bold;', {
+        endpoint: '/api/batch-sync-backend',
+        timestamp: new Date().toLocaleTimeString(),
+        totalTickets: selectedItems.length,
+        tickets: batchPayload.tickets
+      });
+      console.table(batchPayload.tickets.map(t => ({
+        'Ticket ID': t.ticketId,
+        'Party': t.partyCode,
+        'Order ID': t.orderId,
+        'Row': t.rowNum
+      })));
+
+      fetch('/api/batch-sync-backend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(batchPayload)
+      }).then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        function readStream() {
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              finishBatchSyncUI(0, selectedItems.length);
+              return;
+            }
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop();
+
+            for (const chunk of lines) {
+              const dataMatch = chunk.match(/^data:\s*(.+)$/m);
+              if (dataMatch) {
+                try {
+                  const eventData = JSON.parse(dataMatch[1]);
+                  if (eventData.type === 'TICKET_RESULT') {
+                    window.postMessage({
+                      type: 'MASTER_AUTOMATION_BATCH_TICKET_RESULT',
+                      ...eventData
+                    }, '*');
+                  } else if (eventData.type === 'BATCH_COMPLETE') {
+                    window.postMessage({
+                      type: 'MASTER_AUTOMATION_BATCH_SYNC_COMPLETE',
+                      totalCount: selectedItems.length,
+                      successCount: selectedItems.length
+                    }, '*');
+                  } else if (eventData.type === 'BATCH_ERROR') {
+                    window.postMessage({
+                      type: 'MASTER_AUTOMATION_BATCH_SYNC_ERROR',
+                      error: eventData.error
+                    }, '*');
+                  }
+                } catch (_) {}
+              }
+            }
+            readStream();
+          }).catch(err => {
+            console.error("Stream reading error:", err);
+            finishBatchSyncUI(0, 0);
+          });
+        }
+        readStream();
+      }).catch(err => {
+        console.error("Batch sync request error:", err);
+        finishBatchSyncUI(0, 0);
+        showToast("Batch sync error: " + err.message, 5000);
+      });
+    }
+
+    let batchSyncSafetyTimeout = null;
+
+    function resetBatchSyncWatchdog() {
+      clearTimeout(batchSyncSafetyTimeout);
+      if (isBatchSyncRunning) {
+        // Watchdog: only fires if NO ticket progress arrives for 90 continuous seconds
+        batchSyncSafetyTimeout = setTimeout(() => {
+          if (isBatchSyncRunning) {
+            console.warn("Batch sync watchdog: No response from scraper for 90s. Unlocking UI.");
+            finishBatchSyncUI(0, 0);
+            showToast("Batch sync paused due to inactivity (90s).", 4000);
+          }
+        }, 90000);
+      }
+    }
+
+    function finishBatchSyncUI(successCount = 0, totalCount = 0) {
+      isBatchSyncRunning = false;
+      clearTimeout(batchSyncSafetyTimeout);
+      const totalElapsed = batchStartTime ? ((performance.now() - batchStartTime) / 1000).toFixed(2) : 'N/A';
+      console.log(`%c🏁 [BATCH SYNC COMPLETE] ${totalCount} Tickets processed in ${totalElapsed} seconds`, 'color: #059669; font-weight: bold; font-size: 13px;');
+      console.groupEnd();
+
+      const btn = document.getElementById('btnBatchSyncSelected');
+      if (btn) {
+        btn.classList.remove('is-batch-syncing');
+        btn.disabled = (selectedRowNums.size === 0);
+      }
+      const progBox = document.getElementById('batchProgressInfo');
+      const progText = document.getElementById('batchProgressText');
+      if (progText && totalCount > 0) {
+        progText.textContent = `Completed (${successCount}/${totalCount} Done)`;
+      }
+      setTimeout(() => {
+        if (progBox && !isBatchSyncRunning) progBox.style.display = 'none';
+      }, 4000);
+    }
+
+    // Global listener for batch sync messages from bridge
+    window.addEventListener("message", (evt) => {
+      if (!evt.data) return;
+
+      if (evt.data.type === "MASTER_AUTOMATION_BATCH_TICKET_RESULT") {
+        const { rowNum, ticketId, orderId, status, lastComment, success, currentIndex, totalCount } = evt.data;
+
+        // Reset watchdog on each ticket arrival so multi-ticket batches run without time limit!
+        resetBatchSyncWatchdog();
+
+        const itemElapsed = evt.data.elapsedSeconds ? `${evt.data.elapsedSeconds}s` : 'N/A';
+        console.log(`%c✔ [BATCH ITEM ${currentIndex}/${totalCount}] Ticket #${ticketId} ➔ Status: "${status}" (Took ${itemElapsed})`, 'color: #16a34a; font-weight: bold;', {
+          ticketId: ticketId,
+          status: status,
+          lastComment: lastComment,
+          orderId: orderId,
+          partyCode: evt.data.partyCode,
+          timeTaken: itemElapsed,
+          fullData: evt.data
+        });
+
+        const progText = document.getElementById('batchProgressText');
+        if (progText) {
+          progText.textContent = "Syncing " + currentIndex + "/" + totalCount + ": Ticket #" + ticketId + " \u2192 " + status;
+        }
+
+        const ticketStatusIdx = getTicketStatusColumnIndex();
+        const remarkIdx = findHeaderIndex(['remark']);
+        const ticketColIdx = getTicketColumnIndex();
+        const orderColIdx = findHeaderIndex(['order id', 'order']);
+
+        // Update in-memory currentRows
+        let row = null;
+        if (ticketId && ticketColIdx !== -1) {
+          row = currentRows.find(function(r) { return String(r.values[ticketColIdx] || '').trim() === String(ticketId).trim(); });
+        }
+        if (!row && orderId && orderColIdx !== -1) {
+          row = currentRows.find(function(r) { return String(r.values[orderColIdx] || '').trim() === String(orderId).trim(); });
+        }
+        if (!row && rowNum) {
+          row = currentRows.find(function(r) { return r._row_num === rowNum; });
+        }
+
+        if (row) {
+          if (ticketStatusIdx !== -1) {
+            row.values[ticketStatusIdx] = status;
+            if (row.data && currentHeaders[ticketStatusIdx]) row.data[currentHeaders[ticketStatusIdx]] = status;
+          }
+          if (remarkIdx !== -1 && lastComment) {
+            row.values[remarkIdx] = lastComment;
+            if (row.data && currentHeaders[remarkIdx]) row.data[currentHeaders[remarkIdx]] = lastComment;
+          }
+        }
+
+        const effectiveRowNum = (row && row._row_num) ? row._row_num : rowNum;
+
+        // Find DOM row by scanning all tbody rows for matching ticketId
+        let targetTr = null;
+        const allTbodyTrs = Array.from(document.querySelectorAll('tbody tr'));
+
+        if (ticketId) {
+          for (var tri = 0; tri < allTbodyTrs.length; tri++) {
+            var tr = allTbodyTrs[tri];
+            var cells = Array.from(tr.querySelectorAll('td'));
+            var found = cells.some(function(td) {
+              var inp = td.querySelector('input');
+              var val = inp ? (inp.value || '').trim() : (td.textContent || '').trim();
+              return val === String(ticketId).trim();
+            });
+            if (found) { targetTr = tr; break; }
+          }
+        }
+        if (!targetTr && orderId) {
+          for (var tri2 = 0; tri2 < allTbodyTrs.length; tri2++) {
+            var tr2 = allTbodyTrs[tri2];
+            var cells2 = Array.from(tr2.querySelectorAll('td'));
+            var found2 = cells2.some(function(td2) {
+              var inp2 = td2.querySelector('input');
+              var val2 = inp2 ? (inp2.value || '').trim() : (td2.textContent || '').trim();
+              return val2 === String(orderId).trim();
+            });
+            if (found2) { targetTr = tr2; break; }
+          }
+        }
+        if (!targetTr) {
+          targetTr = document.querySelector('input[data-row-num="' + effectiveRowNum + '"]') &&
+                     document.querySelector('input[data-row-num="' + effectiveRowNum + '"]').closest('tr');
+        }
+
+        if (targetTr) {
+          // Update Ticket Status cell
+          if (ticketStatusIdx !== -1) {
+            var stInput = targetTr.querySelector('input.cell-type-input[data-col-idx="' + ticketStatusIdx + '"]');
+            if (stInput) {
+              stInput.value = status;
+              stInput.classList.remove('status-locked', 'status-warn', 'status-error');
+              stInput.classList.add('has-value', 'sync-highlight', success ? 'status-success' : 'status-warn');
+            } else {
+              var stTd = targetTr.querySelector('td[data-col-idx="' + ticketStatusIdx + '"]');
+              if (stTd) stTd.innerHTML = '<span class="status-badge sync-highlight ' + (success ? 'status-success' : 'status-warn') + '">' + escapeHtml(status) + '</span>';
+            }
+          }
+          // Update Remark cell
+          if (remarkIdx !== -1 && lastComment) {
+            var remInput = targetTr.querySelector('input.cell-type-input[data-col-idx="' + remarkIdx + '"]');
+            if (remInput) {
+              remInput.value = lastComment;
+              remInput.classList.add('has-value', 'sync-highlight');
+            } else {
+              var remTd = targetTr.querySelector('td[data-col-idx="' + remarkIdx + '"]');
+              if (remTd) { remTd.textContent = lastComment; remTd.classList.add('sync-highlight'); }
+            }
+          }
+          var chk = targetTr.querySelector('input.row-select-checkbox');
+          if (chk) chk.checked = false;
+          targetTr.classList.remove('row-selected');
+        } else {
+          console.warn("[Web App] Row for ticket " + ticketId + " not in DOM - re-rendering table body.");
+          renderTableBody(filteredRows);
+        }
+
+        selectedRowNums.delete(effectiveRowNum);
+        selectedRowNums.delete(rowNum);
+        updateSelectedCountUI();
+        showToast("\u2714 Ticket #" + ticketId + ": Status \"" + status + "\"", 3500);
+
+            } else if (evt.data.type === "MASTER_AUTOMATION_BATCH_SYNC_COMPLETE") {
+        finishBatchSyncUI(evt.data.successCount || evt.data.totalCount, evt.data.totalCount);
+        showToast(`🎉 Batch Sync Complete! Synced ${evt.data.successCount || evt.data.totalCount} tickets. Save manually when ready.`, 6000);
+        // Auto-save DISABLED — user saves manually
+      } else if (evt.data.type === "MASTER_AUTOMATION_PROGRESS" || evt.data.type === "MASTER_AUTOMATION_SYNC_PROGRESS") {
+        resetBatchSyncWatchdog();
+      } else if (evt.data.type === "MASTER_AUTOMATION_BATCH_SYNC_ERROR") {
+        finishBatchSyncUI(0, 0);
+        showToast(`❌ Batch Sync Error: ${evt.data.error || 'Failed to sync tickets'}`, 7000);
+      }
+    });
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function setupColumnFilterListeners() {
+      const okBtn = document.getElementById('btnColFilterOk');
+      if (okBtn) okBtn.onclick = applyColumnFilterOk;
+
+      const clearBtn = document.getElementById('btnColFilterClear');
+      if (clearBtn) clearBtn.onclick = clearActiveColumnFilter;
+
+      const searchInp = document.getElementById('colFilterSearchInput');
+      if (searchInp) {
+        searchInp.oninput = (e) => renderFilterDropdownList(e.target.value);
+        searchInp.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            applyColumnFilterOk();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeColumnFilterDropdown();
+          }
+        };
+      }
+
+      document.addEventListener('click', (e) => {
+        const dd = document.getElementById('colFilterDropdown');
+        if (dd && dd.style.display !== 'none') {
+          if (!e.target.closest('#colFilterDropdown') && !e.target.closest('.th-filter-btn')) {
+            closeColumnFilterDropdown();
+          }
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeColumnFilterDropdown();
+        }
+      });
+
+      window.addEventListener('scroll', () => {
+        closeColumnFilterDropdown();
+      }, { passive: true });
+
+      const tableScroll = document.querySelector('.table-scroll');
+      if (tableScroll) {
+        tableScroll.addEventListener('scroll', () => {
+          closeColumnFilterDropdown();
+        }, { passive: true });
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setupColumnFilterListeners();
+      renderTableHeaders();
+      document.getElementById('statTotalCols').textContent = currentHeaders.length;
+      loadGoogleSheetData();
+    });
+  </script>
+</body>
+</html>
