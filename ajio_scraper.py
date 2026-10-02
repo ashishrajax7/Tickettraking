@@ -137,48 +137,55 @@ async def _login_and_open_help_center(page, email: str, password: str) -> bool:
             submit_btn = await page.wait_for_selector('button[type="submit"], input[type="submit"], button:has-text("Sign In"), button:has-text("Login")', timeout=6000)
             if submit_btn:
                 await submit_btn.click()
-            await page.wait_for_url("**/vmsui/**", timeout=30000)
-            logger.info("Successfully authenticated to dashboard.")
+            
+            # Wait until browser leaves oauth/login URL
+            await page.wait_for_function(
+                "() => !window.location.href.includes('login') && !window.location.href.includes('callback') && !window.location.href.includes('oauth')",
+                timeout=25000
+            )
+            logger.info(f"Successfully authenticated. Dashboard URL: {page.url}")
     except Exception as e:
         logger.info(f"SSO step check: {e}")
 
-    # Wait 1.5 seconds for dashboard and announcement modal to render in DOM
-    await asyncio.sleep(1.5)
+    # Wait 2.5s for announcement dialog and React components to mount
+    await asyncio.sleep(2.5)
 
-    # Dismiss popups and click Help Center icon via fast JS execution
-    logger.info("Dismissing popups and opening Help Center...")
+    # Check for and dismiss announcement modal if present
+    try:
+        dialog_ok = page.locator('.MuiDialog-root button:has-text("OK"), .MuiDialog-root button[aria-label="Close"], .MuiDialog-root button:has(svg[data-testid="CloseIcon"])').first
+        if await dialog_ok.count() > 0 and await dialog_ok.is_visible():
+            logger.info("Dismissing announcement popup...")
+            await dialog_ok.click()
+            await asyncio.sleep(0.5)
+    except Exception as ex_dlg:
+        logger.debug(f"Announcement modal note: {ex_dlg}")
+
+    # Remove any stray backdrops just in case
     await page.evaluate("""() => {
-        // Dismiss announcements by clicking close button or pressing escape
-        const closeBtn = document.querySelector('button svg[data-testid="CloseIcon"]')?.closest('button') ||
-                         Array.from(document.querySelectorAll('button')).find(b => ['OK', 'CLOSE', 'GOT IT', 'DISMISS'].includes((b.textContent||'').trim().toUpperCase()));
-        if (closeBtn) closeBtn.click();
-
-        // Click Help Center icon
-        const svg = document.querySelector('svg[data-testid="HelpOutlineIcon"]');
-        if (svg) (svg.closest('button') || svg).click();
+        document.querySelectorAll('.MuiBackdrop-root').forEach(b => b.remove());
     }""")
+
+    # Click Help Center icon in navbar
+    logger.info("Clicking Help Center button...")
+    help_btn = page.locator('button[aria-label="Help Center"], svg[data-testid="HelpOutlineIcon"]').first
+    await help_btn.click(force=True)
 
     # Fast wait for Help Center filter inputs
     try:
         await page.wait_for_selector('.rt-thead.-filters input[type="text"]', timeout=12000)
         logger.info("Help Center filter inputs ready.")
         return True
-    except Exception:
-        logger.info("Retrying Help Center button click...")
+    except Exception as ex:
+        logger.warning(f"Filter inputs not ready on first try: {ex}")
         try:
-            help_btn = page.locator('button:has(svg[data-testid="HelpOutlineIcon"])').first
+            help_btn = page.locator('button[aria-label="Help Center"], svg[data-testid="HelpOutlineIcon"]').first
             if await help_btn.count() > 0:
                 await help_btn.click(force=True)
-                await page.wait_for_selector('.rt-thead.-filters input[type="text"]', timeout=12000)
+                await page.wait_for_selector('.rt-thead.-filters input[type="text"]', timeout=10000)
                 return True
         except Exception as ex2:
-            logger.warning(f"Help icon fallback click note: {ex2}")
-
-        # Final fallback: direct navigation
-        logger.info("Trying direct navigation to helpCenter...")
-        await page.goto("https://seller.ajio.com/vmsui/helpCenter", timeout=25000, wait_until="domcontentloaded")
-        await page.wait_for_selector('.rt-table', timeout=15000)
-        return True
+            logger.warning(f"Help icon retry note: {ex2}")
+        return False
 
 async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> dict:
     """Scrapes status and comments for a single ticket on an open Help Center page."""
@@ -194,7 +201,7 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
         await ticket_box.fill(clean_ticket)
         await ticket_box.press("Enter")
 
-    # Fast dynamic wait for row to appear (instead of hardcoded sleep)
+    # Fast dynamic wait for row to appear
     found_target = False
     row_txt = ""
     try:
@@ -238,7 +245,12 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
         }
 
     await ticket_btn.click(force=True)
-    await asyncio.sleep(0.8)
+
+    # Wait for detail dialog
+    try:
+        await page.wait_for_selector('.MuiDialog-root .MuiAccordion-root', timeout=6000)
+    except Exception:
+        await asyncio.sleep(0.5)
 
     # Expand Comments accordion inside the active detail modal dialog
     await page.evaluate("""() => {
@@ -273,40 +285,59 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
         const dialogs = document.querySelectorAll('.MuiDialog-root, [role="dialog"]');
         const activeDlg = dialogs.length > 0 ? dialogs[dialogs.length - 1] : document.body;
 
-        // Strategy 1: Match full dialog text for Dear Seller ... Team AJIO
-        const fullTxt = (activeDlg.innerText || '').replace(/\\s+/g, ' ').trim();
-        const match = fullTxt.match(/Dear Seller.*?(?:Team AJIO|$)/i);
-        if (match) return match[0].trim();
+        // Clean HTML br tags helper
+        const cleanText = (str) => {
+            return (str || '')
+                .replace(/<br\\s*[\\/]?>/gi, '\\n')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/<[^>]+>/g, '')
+                .replace(/[ \\t]+/g, ' ')
+                .trim();
+        };
 
-        // Strategy 2: Look for team response node
-        const allNodes = Array.from(activeDlg.querySelectorAll('h5, p, span, div, .MuiTypography-root, .MuiCardContent-root'));
-        for (let i = allNodes.length - 1; i >= 0; i--) {
-            const txt = (allNodes[i].textContent || '').replace(/\\s+/g, ' ').trim();
-            if (txt.includes("Dear Seller") || txt.includes("Team AJIO")) {
-                const m2 = txt.match(/Dear Seller.*?(?:Team AJIO|$)/i);
-                if (m2) return m2[0].trim();
-                return txt;
+        // Strategy 1: Match full dialog text for Dear Seller ... Team AJIO
+        const fullTxt = activeDlg.innerText || '';
+        const match = fullTxt.match(/Dear Seller[\\s\\S]*?(?:Team AJIO|$)/i);
+        if (match) return cleanText(match[0]);
+
+        // Strategy 2: Check accordion details
+        const accordions = Array.from(activeDlg.querySelectorAll('.MuiAccordion-root'));
+        const commentsAcc = accordions.find(a => (a.querySelector('.MuiAccordionSummary-root')?.textContent || '').toLowerCase().includes('comment'));
+        if (commentsAcc) {
+            const details = commentsAcc.querySelector('.MuiAccordionDetails-root') || commentsAcc;
+            const textBlocks = Array.from(details.querySelectorAll('p, span, div, td, li'))
+                .map(el => cleanText(el.innerText || el.textContent))
+                .filter(t => t.length > 15 && !t.includes('Comments'));
+            if (textBlocks.length > 0) {
+                return textBlocks[textBlocks.length - 1];
             }
         }
 
-        // Strategy 3: Check accordion details raw text
-        const accs = Array.from(activeDlg.querySelectorAll('.MuiAccordionDetails-root, .MuiCollapse-root, [role="region"]'));
-        for (const a of accs) {
-            const atxt = (a.textContent || '').replace(/\\s+/g, ' ').trim();
-            const amatch = atxt.match(/Dear Seller.*?(?:Team AJIO|$)/i);
-            if (amatch) return amatch[0].trim();
+        // Strategy 3: Check all typography nodes
+        const allNodes = Array.from(activeDlg.querySelectorAll('h5, p, span, div, .MuiTypography-root, .MuiCardContent-root'));
+        for (let i = allNodes.length - 1; i >= 0; i--) {
+            const txt = (allNodes[i].textContent || '').trim();
+            if (txt.includes("Dear Seller") || txt.includes("Team AJIO")) {
+                const m2 = txt.match(/Dear Seller[\\s\\S]*?(?:Team AJIO|$)/i);
+                if (m2) return cleanText(m2[0]);
+                return cleanText(txt);
+            }
         }
+
         return '';
     }""")
 
     last_comment = raw_comment or ""
     if last_comment:
+        last_comment = re.sub(r'<br\s*[\/]?>', '\n', last_comment, flags=re.I)
         last_comment = re.sub(r'<[^>]*>', ' ', last_comment)
         last_comment = re.sub(r'&lt;[^&]*&gt;', ' ', last_comment)
         last_comment = re.sub(r'\s+', ' ', last_comment).strip()
 
-    # Close modal popup cleanly via CloseIcon on activeDlg
+    # Close ticket detail dialog so next ticket has clean DOM
     try:
+        await page.keyboard.press("Escape")
+        await asyncio.sleep(0.3)
         await page.evaluate("""() => {
             const dialogs = document.querySelectorAll('.MuiDialog-root, [role="dialog"]');
             const activeDlg = dialogs.length > 0 ? dialogs[dialogs.length - 1] : document.body;
