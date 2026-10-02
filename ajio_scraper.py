@@ -121,7 +121,7 @@ LAUNCH_ARGS = [
 ]
 
 async def _login_and_open_help_center(page, email: str, password: str) -> bool:
-    """Logs into Reliance SSO and lands on Help Center table."""
+    """Logs into Reliance SSO and lands on Help Center table rapidly."""
     logger.info(f"Navigating to seller.ajio.com/vmsui/ with email {email}...")
     await page.goto("https://seller.ajio.com/vmsui/", timeout=35000, wait_until="domcontentloaded")
 
@@ -131,10 +131,10 @@ async def _login_and_open_help_center(page, email: str, password: str) -> bool:
         if user_inp:
             logger.info("Filling credentials...")
             await user_inp.fill(email)
-            pwd_inp = await page.query_selector('input[type="password"], #password, input[name="password"]')
+            pwd_inp = await page.wait_for_selector('input[type="password"], #password, input[name="password"]', timeout=6000)
             if pwd_inp:
                 await pwd_inp.fill(password)
-            submit_btn = await page.query_selector('button[type="submit"], input[type="submit"], button:has-text("Sign In"), button:has-text("Login")')
+            submit_btn = await page.wait_for_selector('button[type="submit"], input[type="submit"], button:has-text("Sign In"), button:has-text("Login")', timeout=6000)
             if submit_btn:
                 await submit_btn.click()
             await page.wait_for_url("**/vmsui/**", timeout=30000)
@@ -142,32 +142,42 @@ async def _login_and_open_help_center(page, email: str, password: str) -> bool:
     except Exception as e:
         logger.info(f"SSO step check: {e}")
 
-    await asyncio.sleep(2)
+    # Wait 1.5 seconds for dashboard and announcement modal to render in DOM
+    await asyncio.sleep(1.5)
 
-    # Dismiss modals and click Help Outline icon
+    # Dismiss popups and click Help Center icon via fast JS execution
     logger.info("Dismissing popups and opening Help Center...")
     await page.evaluate("""() => {
-        const dialogs = document.querySelectorAll('.MuiDialog-root, .MuiModal-root, [role="dialog"]');
-        for (const d of dialogs) {
-            if (d.textContent && (d.textContent.includes("Ticket") || d.textContent.includes("Help Center"))) continue;
-            const close = d.querySelector('button[aria-label="Close"], button svg[data-testid="CloseIcon"]')?.closest('button') ||
-                          Array.from(d.querySelectorAll('button')).find(b => ["OK", "CLOSE", "GOT IT", "DISMISS", "SKIP"].includes((b.textContent||"").trim().toUpperCase()));
-            if (close) close.click();
-        }
+        // Dismiss announcements by clicking close button or pressing escape
+        const closeBtn = document.querySelector('button svg[data-testid="CloseIcon"]')?.closest('button') ||
+                         Array.from(document.querySelectorAll('button')).find(b => ['OK', 'CLOSE', 'GOT IT', 'DISMISS'].includes((b.textContent||'').trim().toUpperCase()));
+        if (closeBtn) closeBtn.click();
+
+        // Click Help Center icon
         const svg = document.querySelector('svg[data-testid="HelpOutlineIcon"]');
         if (svg) (svg.closest('button') || svg).click();
     }""")
 
-    await asyncio.sleep(3)
-
-    # Verify table
+    # Fast wait for Help Center filter inputs
     try:
-        await page.wait_for_selector('.rt-table', timeout=20000)
+        await page.wait_for_selector('.rt-thead.-filters input[type="text"]', timeout=12000)
+        logger.info("Help Center filter inputs ready.")
         return True
     except Exception:
-        logger.info("Help icon click did not open table. Trying direct URL...")
-        await page.goto("https://seller.ajio.com/vmsui/helpCenter", timeout=25000)
-        await page.wait_for_selector('.rt-table', timeout=20000)
+        logger.info("Retrying Help Center button click...")
+        try:
+            help_btn = page.locator('button:has(svg[data-testid="HelpOutlineIcon"])').first
+            if await help_btn.count() > 0:
+                await help_btn.click(force=True)
+                await page.wait_for_selector('.rt-thead.-filters input[type="text"]', timeout=12000)
+                return True
+        except Exception as ex2:
+            logger.warning(f"Help icon fallback click note: {ex2}")
+
+        # Final fallback: direct navigation
+        logger.info("Trying direct navigation to helpCenter...")
+        await page.goto("https://seller.ajio.com/vmsui/helpCenter", timeout=25000, wait_until="domcontentloaded")
+        await page.wait_for_selector('.rt-table', timeout=15000)
         return True
 
 async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> dict:
@@ -180,28 +190,35 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
     count_inp = await filter_inputs.count()
     if count_inp >= 2:
         ticket_box = filter_inputs.nth(1)
-        await ticket_box.click()
-        await ticket_box.press("Control+A")
-        await ticket_box.press("Backspace")
-        await ticket_box.fill("")
-        await ticket_box.press_sequentially(clean_ticket, delay=50)
+        await ticket_box.scroll_into_view_if_needed()
+        await ticket_box.fill(clean_ticket)
         await ticket_box.press("Enter")
-        await page.keyboard.press("Tab")
-        await asyncio.sleep(2.5)
 
-    # Poll up to 6 seconds for row to appear
+    # Fast dynamic wait for row to appear (instead of hardcoded sleep)
     found_target = False
     row_txt = ""
-    for _ in range(12):
+    try:
+        await page.wait_for_function(
+            """(ticket) => {
+                const rows = document.querySelectorAll('.rt-tbody .rt-tr:not(.-padRow)');
+                return Array.from(rows).some(r => (r.textContent || '').includes(ticket));
+            }""",
+            arg=clean_ticket,
+            timeout=8000
+        )
+        found_target = True
         row_txt = await page.evaluate(f"""(ticket) => {{
             const rows = Array.from(document.querySelectorAll('.rt-tbody .rt-tr:not(.-padRow)'));
             const target = rows.find(r => (r.textContent || '').includes(ticket));
             return target ? (target.textContent || '').toUpperCase() : '';
         }}""", clean_ticket)
-        if row_txt:
-            found_target = True
-            break
-        await asyncio.sleep(0.5)
+    except Exception:
+        row_txt = await page.evaluate(f"""(ticket) => {{
+            const rows = Array.from(document.querySelectorAll('.rt-tbody .rt-tr:not(.-padRow)'));
+            const target = rows.find(r => (r.textContent || '').includes(ticket));
+            return target ? (target.textContent || '').toUpperCase() : '';
+        }}""", clean_ticket)
+        found_target = bool(row_txt)
 
     status_text = "UNKNOWN"
     for s in ['REJECTED', 'APPROVED', 'OPEN', 'IN PROGRESS', 'CLOSED', 'PENDING', 'RESOLVED']:
@@ -220,12 +237,14 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
             "lastComment": ""
         }
 
-    await ticket_btn.click()
-    await asyncio.sleep(2.5)
+    await ticket_btn.click(force=True)
+    await asyncio.sleep(0.8)
 
-    # Expand Comments accordion if collapsed
+    # Expand Comments accordion inside the active detail modal dialog
     await page.evaluate("""() => {
-        const accordions = Array.from(document.querySelectorAll('.MuiAccordion-root'));
+        const dialogs = document.querySelectorAll('.MuiDialog-root, [role="dialog"]');
+        const activeDlg = dialogs.length > 0 ? dialogs[dialogs.length - 1] : document.body;
+        const accordions = Array.from(activeDlg.querySelectorAll('.MuiAccordion-root'));
         const commentsAcc = accordions.find(a => (a.querySelector('.MuiAccordionSummary-root')?.textContent || '').toLowerCase().includes('comment'));
         if (commentsAcc) {
             const summary = commentsAcc.querySelector('.MuiAccordionSummary-root') || commentsAcc;
@@ -234,38 +253,48 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
             }
         }
     }""")
-    await asyncio.sleep(2)
 
-    # Scrape comments with multi-strategy fallback
+    # Dynamic wait for comment network data to arrive from Ajio API
+    try:
+        await page.wait_for_function(
+            """() => {
+                const dialogs = document.querySelectorAll('.MuiDialog-root, [role="dialog"]');
+                const activeDlg = dialogs.length > 0 ? dialogs[dialogs.length - 1] : document.body;
+                const txt = activeDlg.innerText || '';
+                return txt.includes('Dear Seller') || txt.includes('Team AJIO') || txt.includes('SPF') || txt.includes('Attachment') || txt.length > 400;
+            }""",
+            timeout=4000
+        )
+    except Exception:
+        await asyncio.sleep(0.5)
+
+    # Scrape comments targeting activeDlg
     raw_comment = await page.evaluate("""() => {
-        // Strategy 1: Look for Ajio team response directly
-        const allH5s = Array.from(document.querySelectorAll('.MuiTypography-h5, [class*="Typography-h5"], .MuiCardContent-root div'));
-        for (let i = allH5s.length - 1; i >= 0; i--) {
-            const txt = (allH5s[i].textContent || '').trim();
+        const dialogs = document.querySelectorAll('.MuiDialog-root, [role="dialog"]');
+        const activeDlg = dialogs.length > 0 ? dialogs[dialogs.length - 1] : document.body;
+
+        // Strategy 1: Match full dialog text for Dear Seller ... Team AJIO
+        const fullTxt = (activeDlg.innerText || '').replace(/\\s+/g, ' ').trim();
+        const match = fullTxt.match(/Dear Seller.*?(?:Team AJIO|$)/i);
+        if (match) return match[0].trim();
+
+        // Strategy 2: Look for team response node
+        const allNodes = Array.from(activeDlg.querySelectorAll('h5, p, span, div, .MuiTypography-root, .MuiCardContent-root'));
+        for (let i = allNodes.length - 1; i >= 0; i--) {
+            const txt = (allNodes[i].textContent || '').replace(/\\s+/g, ' ').trim();
             if (txt.includes("Dear Seller") || txt.includes("Team AJIO")) {
+                const m2 = txt.match(/Dear Seller.*?(?:Team AJIO|$)/i);
+                if (m2) return m2[0].trim();
                 return txt;
             }
         }
-        
-        // Strategy 2: Look for any card message that isn't seller title or header
-        for (let i = allH5s.length - 1; i >= 0; i--) {
-            const txt = (allH5s[i].textContent || '').trim();
-            if (txt.length > 15 && 
-                !txt.includes("EASY SELL") && 
-                !txt.toLowerCase().includes("have an issue") && 
-                !txt.toLowerCase().includes("raise a ticket") &&
-                !txt.includes("All Stars") &&
-                !txt.includes("Help Center")) {
-                return txt;
-            }
-        }
-        
-        // Strategy 3: Check accordion details raw text for "Dear Seller... Regards, Team AJIO"
-        const accs = Array.from(document.querySelectorAll('.MuiAccordionDetails-root, .MuiCollapse-root, [role="region"]'));
+
+        // Strategy 3: Check accordion details raw text
+        const accs = Array.from(activeDlg.querySelectorAll('.MuiAccordionDetails-root, .MuiCollapse-root, [role="region"]'));
         for (const a of accs) {
             const atxt = (a.textContent || '').replace(/\\s+/g, ' ').trim();
-            const match = atxt.match(/Dear Seller.*?(?:Team AJIO|$)/i);
-            if (match) return match[0].trim();
+            const amatch = atxt.match(/Dear Seller.*?(?:Team AJIO|$)/i);
+            if (amatch) return amatch[0].trim();
         }
         return '';
     }""")
@@ -276,17 +305,18 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
         last_comment = re.sub(r'&lt;[^&]*&gt;', ' ', last_comment)
         last_comment = re.sub(r'\s+', ' ', last_comment).strip()
 
-    # Close modal popup
+    # Close modal popup cleanly via CloseIcon on activeDlg
     try:
         await page.evaluate("""() => {
-            const closeSvgs = Array.from(document.querySelectorAll('svg[data-testid="CloseIcon"]'));
-            if (closeSvgs.length > 1) {
+            const dialogs = document.querySelectorAll('.MuiDialog-root, [role="dialog"]');
+            const activeDlg = dialogs.length > 0 ? dialogs[dialogs.length - 1] : document.body;
+            const closeSvgs = Array.from(activeDlg.querySelectorAll('svg[data-testid="CloseIcon"]'));
+            if (closeSvgs.length > 0) {
                 const topBtn = closeSvgs[closeSvgs.length - 1].closest('button');
                 if (topBtn) topBtn.click();
             }
         }""")
-        await page.keyboard.press("Escape")
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.3)
     except Exception:
         pass
 
@@ -413,7 +443,7 @@ async def scrape_batch_tickets_async(tickets: list, progress_callback=None) -> l
                         t_res["totalCount"] = total_count
                         t_res["elapsedSeconds"] = item_elapsed
                         results.append(t_res)
-                        logger.info(f"[BATCH ITEM {processed_count}/{totalCount}] Ticket #{t_id} -> Status: {t_res.get('status')} (Took {item_elapsed}s)")
+                        logger.info(f"[BATCH ITEM {processed_count}/{total_count}] Ticket #{t_id} -> Status: {t_res.get('status')} (Took {item_elapsed}s)")
                         if progress_callback:
                             progress_callback(t_res)
                     except Exception as ex:
@@ -431,7 +461,7 @@ async def scrape_batch_tickets_async(tickets: list, progress_callback=None) -> l
                             "elapsedSeconds": item_elapsed
                         }
                         results.append(err_res)
-                        logger.error(f"[BATCH ITEM ERROR {processed_count}/{totalCount}] Ticket #{t_id}: {ex}")
+                        logger.error(f"[BATCH ITEM ERROR {processed_count}/{total_count}] Ticket #{t_id}: {ex}")
                         if progress_callback:
                             progress_callback(err_res)
 
