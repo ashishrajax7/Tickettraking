@@ -499,6 +499,16 @@ def serve_brand_icon():
     return "", 404
 
 
+@app.route("/api/version", methods=["GET"])
+def api_version():
+    return jsonify({
+        "ok": True,
+        "version": "2.2.0",
+        "description": "Ajio fast sync with step timings & comment extraction",
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+
 @app.route("/api/config", methods=["GET", "POST"])
 def api_config():
     if request.method == "POST":

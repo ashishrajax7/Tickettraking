@@ -192,6 +192,8 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
     clean_ticket = str(ticket_id or "").strip()
     clean_order = str(order_id or "").strip()
 
+    t_start = time.time()
+
     # Filter by ticket ID in column 2
     filter_inputs = page.locator('.rt-thead.-filters input[type="text"]')
     count_inp = await filter_inputs.count()
@@ -233,24 +235,53 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
             status_text = s
             break
 
-    # Click ticket button to open details modal
-    ticket_btn = page.locator('.rt-tbody .rt-tr:not(.-padRow) button').first
-    btn_exists = await ticket_btn.count() > 0
-    if not btn_exists or not found_target:
+    t_filter = time.time()
+
+    if not found_target:
         return {
             "ok": False,
             "error": f"Ticket #{clean_ticket} not found in Help Center table",
             "status": status_text,
-            "lastComment": ""
+            "lastComment": "",
+            "filterSeconds": round(t_filter - t_start, 2),
+            "detailSeconds": 0
         }
 
-    await ticket_btn.click(force=True)
+    # Click ticket button or row to open details modal
+    try:
+        ticket_btn = page.locator('.rt-tbody .rt-tr:not(.-padRow) button').first
+        if await ticket_btn.count() > 0:
+            await ticket_btn.scroll_into_view_if_needed()
+            await ticket_btn.click()
+        else:
+            await page.evaluate(f"""(ticket) => {{
+                const rows = Array.from(document.querySelectorAll('.rt-tbody .rt-tr:not(.-padRow)'));
+                const target = rows.find(r => (r.textContent || '').includes(ticket));
+                if (target) {{
+                    const clickable = target.querySelector('button, a, [role="button"]') || target;
+                    clickable.click();
+                }}
+            }}""", clean_ticket)
+    except Exception as click_ex:
+        logger.warning(f"Ticket click exception: {click_ex}")
 
     # Wait for detail dialog
     try:
         await page.wait_for_selector('.MuiDialog-root .MuiAccordion-root', timeout=6000)
     except Exception:
-        await asyncio.sleep(0.5)
+        # Retry clicking via evaluate
+        await page.evaluate(f"""(ticket) => {{
+            const rows = Array.from(document.querySelectorAll('.rt-tbody .rt-tr:not(.-padRow)'));
+            const target = rows.find(r => (r.textContent || '').includes(ticket));
+            if (target) {{
+                const clickable = target.querySelector('button, a, [role="button"]') || target;
+                clickable.click();
+            }}
+        }}""", clean_ticket)
+        try:
+            await page.wait_for_selector('.MuiDialog-root .MuiAccordion-root', timeout=4000)
+        except Exception:
+            pass
 
     # Expand Comments accordion inside the active detail modal dialog
     await page.evaluate("""() => {
@@ -260,9 +291,7 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
         const commentsAcc = accordions.find(a => (a.querySelector('.MuiAccordionSummary-root')?.textContent || '').toLowerCase().includes('comment'));
         if (commentsAcc) {
             const summary = commentsAcc.querySelector('.MuiAccordionSummary-root') || commentsAcc;
-            if (summary.getAttribute('aria-expanded') !== 'true') {
-                summary.click();
-            }
+            summary.click();
         }
     }""")
 
@@ -272,13 +301,13 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
             """() => {
                 const dialogs = document.querySelectorAll('.MuiDialog-root, [role="dialog"]');
                 const activeDlg = dialogs.length > 0 ? dialogs[dialogs.length - 1] : document.body;
-                const txt = activeDlg.innerText || '';
-                return txt.includes('Dear Seller') || txt.includes('Team AJIO') || txt.includes('SPF') || txt.includes('Attachment') || txt.length > 400;
+                const txt = activeDlg.innerText || activeDlg.textContent || '';
+                return txt.includes('Dear Seller') || txt.includes('Team AJIO') || txt.includes('SPF') || txt.length > 300;
             }""",
-            timeout=4000
+            timeout=3000
         )
     except Exception:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3)
 
     # Scrape comments targeting activeDlg
     raw_comment = await page.evaluate("""() => {
@@ -295,12 +324,7 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
                 .trim();
         };
 
-        // Strategy 1: Match full dialog text for Dear Seller ... Team AJIO
-        const fullTxt = activeDlg.innerText || '';
-        const match = fullTxt.match(/Dear Seller[\\s\\S]*?(?:Team AJIO|$)/i);
-        if (match) return cleanText(match[0]);
-
-        // Strategy 2: Check accordion details
+        // Strategy 1: Check accordion details
         const accordions = Array.from(activeDlg.querySelectorAll('.MuiAccordion-root'));
         const commentsAcc = accordions.find(a => (a.querySelector('.MuiAccordionSummary-root')?.textContent || '').toLowerCase().includes('comment'));
         if (commentsAcc) {
@@ -312,6 +336,11 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
                 return textBlocks[textBlocks.length - 1];
             }
         }
+
+        // Strategy 2: Match full dialog text for Dear Seller ... Team AJIO
+        const fullTxt = activeDlg.innerText || activeDlg.textContent || '';
+        const match = fullTxt.match(/Dear Seller[\\s\\S]*?(?:Team AJIO|$)/i);
+        if (match) return cleanText(match[0]);
 
         // Strategy 3: Check all typography nodes
         const allNodes = Array.from(activeDlg.querySelectorAll('h5, p, span, div, .MuiTypography-root, .MuiCardContent-root'));
@@ -351,12 +380,15 @@ async def _scrape_ticket_in_page(page, ticket_id: str, order_id: str = None) -> 
     except Exception:
         pass
 
+    t_end = time.time()
     return {
         "ok": True,
         "ticketId": clean_ticket,
         "orderId": clean_order,
         "status": status_text,
-        "lastComment": last_comment
+        "lastComment": last_comment,
+        "filterSeconds": round(t_filter - t_start, 2),
+        "detailSeconds": round(t_end - t_filter, 2)
     }
 
 async def scrape_single_ticket_async(party_code: str, ticket_id: str, order_id: str = None) -> dict:
@@ -391,6 +423,7 @@ async def scrape_single_ticket_async(party_code: str, ticket_id: str, order_id: 
 
             result = await _scrape_ticket_in_page(page, ticket_id, order_id)
             result["partyCode"] = party_code
+            result["loginSeconds"] = login_time
             elapsed = round(time.time() - t0, 2)
             result["elapsedSeconds"] = elapsed
             await browser.close()
